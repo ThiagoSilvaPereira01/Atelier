@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "312769927682",
+    "project_id": "atelier-649da",
+    "storage_bucket": "atelier-649da.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:312769927682:android:d4181173a1224a0e2a251b",
+        "android_client_info": {
+          "package_name": "com.atelier.raquel"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "312769927682-77l681i3e1ov3juc020ak897rf1tkvfh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCt1f_iOVK4whVacssTVTK8eZM8cRFLa-A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "312769927682-77l681i3e1ov3juc020ak897rf1tkvfh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

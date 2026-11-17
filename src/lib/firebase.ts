@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+import { SocialLogin } from '@capgo/capacitor-social-login';
 import { initializeApp, getApps, deleteApp, type FirebaseApp } from 'firebase/app';
 import {
   getAuth,
@@ -5,6 +7,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithCredential,
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged,
@@ -12,6 +15,8 @@ import {
 } from 'firebase/auth';
 import { getFirestore, type Firestore, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import type { AppData, FirebaseConfig } from '../types';
+
+declare const __GOOGLE_WEB_CLIENT_ID__: string;
 
 const CONFIG_STORAGE_KEY = 'raquel_psi_firebase_config';
 
@@ -33,7 +38,30 @@ export function clearPendingRegistrationName(): void {
 }
 
 export function translateAuthError(err: unknown): string {
+  const code =
+    typeof err === 'object' && err !== null && 'code' in err
+      ? String((err as { code?: unknown }).code ?? '')
+      : '';
   const msg = err instanceof Error ? err.message : String(err);
+
+  if (code === 'USER_CANCELLED' || msg.includes('USER_CANCELLED') || msg.includes('auth/popup-closed-by-user')) {
+    return 'Login com Google cancelado.';
+  }
+  if (msg.includes('GOOGLE_WEB_CLIENT_ID_MISSING')) {
+    return 'Web Client ID do Google não configurado. Adicione VITE_GOOGLE_WEB_CLIENT_ID no .env ou google-services.json no Android.';
+  }
+  if (msg.includes('GOOGLE_ID_TOKEN_MISSING')) {
+    return 'Não foi possível obter o token de autenticação do Google.';
+  }
+  if (msg.includes('NoCredentialException') || msg.includes('No credentials available')) {
+    return 'Nenhuma conta Google disponível ou autorizada neste aparelho. Verifique a configuração SHA-1 no Firebase Console.';
+  }
+  if (msg.includes('Account reauth failed') || msg.includes('[16]')) {
+    return 'Falha ao autenticar sua conta Google no aparelho. Verifique o SHA-1 e a tela de consentimento OAuth no Firebase/Google Cloud.';
+  }
+  if (msg.includes('auth/account-exists-with-different-credential')) {
+    return 'Já existe uma conta cadastrada com esse e-mail usando outro método de login.';
+  }
   if (msg.includes('auth/invalid-credential') || msg.includes('auth/wrong-password')) {
     return 'E-mail ou senha incorretos.';
   }
@@ -51,9 +79,6 @@ export function translateAuthError(err: unknown): string {
   }
   if (msg.includes('auth/operation-not-allowed')) {
     return 'Login por e-mail/senha ainda não foi ativado no Firebase Console.';
-  }
-  if (msg.includes('auth/popup-closed-by-user')) {
-    return 'Login com Google cancelado.';
   }
   return msg;
 }
@@ -158,12 +183,60 @@ export async function registerWithEmail(auth: Auth, email: string, password: str
   return createUserWithEmailAndPassword(auth, email, password);
 }
 
+let socialLoginInitialized = false;
+
+function getGoogleWebClientId(): string {
+  const fromEnv = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
+  if (fromEnv) return fromEnv;
+  if (typeof __GOOGLE_WEB_CLIENT_ID__ !== 'undefined') return __GOOGLE_WEB_CLIENT_ID__;
+  return '';
+}
+
+async function ensureNativeGoogleInitialized(webClientId: string): Promise<void> {
+  if (socialLoginInitialized) return;
+  await SocialLogin.initialize({
+    google: {
+      webClientId,
+      mode: 'online',
+      skipAuthOnlyAuthorizationAfterSignIn: true,
+    },
+  });
+  socialLoginInitialized = true;
+}
+
 export async function loginWithGoogle(auth: Auth) {
+  if (Capacitor.isNativePlatform()) {
+    const webClientId = getGoogleWebClientId();
+    if (!webClientId) {
+      throw new Error('GOOGLE_WEB_CLIENT_ID_MISSING');
+    }
+    await ensureNativeGoogleInitialized(webClientId);
+    const response = await SocialLogin.login({
+      provider: 'google',
+      options: {},
+    });
+    if (response.result.responseType !== 'online' || !response.result.idToken) {
+      throw new Error('GOOGLE_ID_TOKEN_MISSING');
+    }
+    const credential = GoogleAuthProvider.credential(response.result.idToken);
+    return signInWithCredential(auth, credential);
+  }
   const provider = new GoogleAuthProvider();
   return signInWithPopup(auth, provider);
 }
 
 export async function logoutFirebase(auth: Auth) {
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const webClientId = getGoogleWebClientId();
+      if (webClientId) {
+        await ensureNativeGoogleInitialized(webClientId);
+        await SocialLogin.logout({ provider: 'google' });
+      }
+    } catch {
+      // Ignore native Google logout errors when signed in via email/password
+    }
+  }
   return signOut(auth);
 }
 
