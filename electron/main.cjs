@@ -15,28 +15,49 @@ const MIME_TYPES = {
 };
 
 let server = null;
+const PREFERRED_PORT = 45917;
 
-function startStaticServer(distDir) {
+function createStaticHandler(distDir) {
+  const resolvedRoot = path.resolve(distDir);
+  return (req, res) => {
+    const rawPath = (req.url || '/').split('?')[0];
+    const safeRel = rawPath === '/' ? 'index.html' : rawPath.replace(/^\/+/, '');
+    let filePath = path.resolve(resolvedRoot, safeRel);
+
+    if (!filePath.startsWith(resolvedRoot + path.sep) && filePath !== resolvedRoot) {
+      filePath = path.join(resolvedRoot, 'index.html');
+    }
+
+    if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+      filePath = path.join(resolvedRoot, 'index.html');
+    }
+
+    const ext = path.extname(filePath).toLowerCase();
+    res.setHeader('Content-Type', MIME_TYPES[ext] || 'application/octet-stream');
+    fs.createReadStream(filePath).pipe(res);
+  };
+}
+
+function listenOnPort(distDir, port) {
   return new Promise((resolve, reject) => {
-    const srv = http.createServer((req, res) => {
-      const urlPath = (req.url || '/').split('?')[0];
-      let filePath = path.join(distDir, urlPath === '/' ? 'index.html' : urlPath);
-
-      if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-        filePath = path.join(distDir, 'index.html');
-      }
-
-      const ext = path.extname(filePath).toLowerCase();
-      res.setHeader('Content-Type', MIME_TYPES[ext] || 'application/octet-stream');
-      fs.createReadStream(filePath).pipe(res);
-    });
-
+    const srv = http.createServer(createStaticHandler(distDir));
     srv.on('error', reject);
-    srv.listen(0, '127.0.0.1', () => {
+    srv.listen(port, '127.0.0.1', () => {
       const addr = srv.address();
       resolve({ server: srv, port: addr.port });
     });
   });
+}
+
+async function startStaticServer(distDir) {
+  try {
+    return await listenOnPort(distDir, PREFERRED_PORT);
+  } catch (err) {
+    if (err && err.code === 'EADDRINUSE') {
+      return listenOnPort(distDir, 0);
+    }
+    throw err;
+  }
 }
 
 async function createWindow() {

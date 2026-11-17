@@ -24,9 +24,17 @@ import {
   subscribeAuth,
   subscribeUserData,
   saveUserData,
+  consumePendingRegistrationName,
 } from '../lib/firebase';
 
 const LOCAL_DATA_KEY = 'raquel_psi_app_data_v1';
+
+function createId(prefix: string): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
 
 function loadLocalData(): AppData {
   try {
@@ -53,7 +61,11 @@ export function useAppData() {
   const [authLoading, setAuthLoading] = useState<boolean>(() => Boolean(getSavedFirebaseConfig()));
   const [syncStatus, setSyncStatus] = useState<'local' | 'syncing' | 'synced' | 'error'>('local');
   const [syncError, setSyncError] = useState<string | null>(null);
-  const isRemoteUpdate = useRef(false);
+  const dataRef = useRef(data);
+
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
 
   // Apply theme attribute to document root
   useEffect(() => {
@@ -92,6 +104,7 @@ export function useAppData() {
         if (!firebaseUser) {
           setSyncStatus('local');
           const clean = createInitialData();
+          dataRef.current = clean;
           setData(clean);
           localStorage.removeItem(LOCAL_DATA_KEY);
         }
@@ -115,29 +128,35 @@ export function useAppData() {
       user.uid,
       (remoteData) => {
         if (remoteData) {
-          isRemoteUpdate.current = true;
           const defaults = createInitialData();
-          setData({
+          const merged: AppData = {
             ...defaults,
             ...remoteData,
             settings: { ...defaults.settings, ...(remoteData.settings ?? {}) },
-          });
+          };
+          dataRef.current = merged;
+          setData(merged);
           setSyncStatus('synced');
           setSyncError(null);
         } else {
           // First time user logs in: create a clean workspace for this user
+          const pendingName = consumePendingRegistrationName();
           const firstName =
+            pendingName?.split(/\s+/)[0] ||
             user.displayName?.trim().split(/\s+/)[0] ||
             user.email?.split('@')[0] ||
             'Raquel';
           const cleanUserData = createInitialData(firstName);
-          isRemoteUpdate.current = true;
+          dataRef.current = cleanUserData;
           setData(cleanUserData);
           saveUserData(db, user.uid, cleanUserData)
-            .then(() => setSyncStatus('synced'))
+            .then(() => {
+              setSyncStatus('synced');
+              setSyncError(null);
+            })
             .catch((err) => {
               setSyncStatus('error');
-              setSyncError(err.message);
+              setSyncError(err instanceof Error ? err.message : 'Erro ao criar espaço');
             });
         }
       },
@@ -150,26 +169,25 @@ export function useAppData() {
     return () => unsubDoc();
   }, [db, user]);
 
-  // Push local mutations to Firestore
+  // Push local mutations to Firestore outside React's state updater
   const commitUpdate = useCallback(
     (updater: (prev: AppData) => AppData) => {
-      setData((prev) => {
-        const next = updater(prev);
-        if (db && user && !isRemoteUpdate.current) {
-          setSyncStatus('syncing');
-          saveUserData(db, user.uid, next)
-            .then(() => {
-              setSyncStatus('synced');
-              setSyncError(null);
-            })
-            .catch((err) => {
-              setSyncStatus('error');
-              setSyncError(err.message);
-            });
-        }
-        isRemoteUpdate.current = false;
-        return next;
-      });
+      const next = updater(dataRef.current);
+      dataRef.current = next;
+      setData(next);
+
+      if (db && user) {
+        setSyncStatus('syncing');
+        saveUserData(db, user.uid, next)
+          .then(() => {
+            setSyncStatus('synced');
+            setSyncError(null);
+          })
+          .catch((err) => {
+            setSyncStatus('error');
+            setSyncError(err instanceof Error ? err.message : 'Erro ao sincronizar');
+          });
+      }
     },
     [db, user]
   );
@@ -203,7 +221,7 @@ export function useAppData() {
     (event: Omit<AgendaEvent, 'id'>) => {
       commitUpdate((prev) => ({
         ...prev,
-        events: [...prev.events, { ...event, id: `ev-${Date.now()}` }],
+        events: [...prev.events, { ...event, id: createId('ev') }],
       }));
     },
     [commitUpdate]
@@ -223,7 +241,7 @@ export function useAppData() {
     (task: Omit<TaskItem, 'id'>) => {
       commitUpdate((prev) => ({
         ...prev,
-        tasks: [{ ...task, id: `t-${Date.now()}` }, ...prev.tasks],
+        tasks: [{ ...task, id: createId('t') }, ...prev.tasks],
       }));
     },
     [commitUpdate]
@@ -253,7 +271,7 @@ export function useAppData() {
     (tx: Omit<Transaction, 'id'>) => {
       commitUpdate((prev) => ({
         ...prev,
-        transactions: [{ ...tx, id: `tx-${Date.now()}` }, ...prev.transactions],
+        transactions: [{ ...tx, id: createId('tx') }, ...prev.transactions],
       }));
     },
     [commitUpdate]
@@ -273,7 +291,7 @@ export function useAppData() {
     (habit: Omit<Habit, 'id' | 'completedDates'>) => {
       commitUpdate((prev) => ({
         ...prev,
-        habits: [...prev.habits, { ...habit, id: `h-${Date.now()}`, completedDates: [] }],
+        habits: [...prev.habits, { ...habit, id: createId('h'), completedDates: [] }],
       }));
     },
     [commitUpdate]
@@ -312,7 +330,7 @@ export function useAppData() {
     (goal: Omit<Goal, 'id'>) => {
       commitUpdate((prev) => ({
         ...prev,
-        goals: [...prev.goals, { ...goal, id: `g-${Date.now()}` }],
+        goals: [...prev.goals, { ...goal, id: createId('g') }],
       }));
     },
     [commitUpdate]
@@ -342,7 +360,7 @@ export function useAppData() {
     (course: Omit<Course, 'id'>) => {
       commitUpdate((prev) => ({
         ...prev,
-        courses: [...prev.courses, { ...course, id: `c-${Date.now()}` }],
+        courses: [...prev.courses, { ...course, id: createId('c') }],
       }));
     },
     [commitUpdate]
@@ -372,7 +390,7 @@ export function useAppData() {
     (reading: Omit<StudyReading, 'id'>) => {
       commitUpdate((prev) => ({
         ...prev,
-        readings: [{ ...reading, id: `r-${Date.now()}` }, ...prev.readings],
+        readings: [{ ...reading, id: createId('r') }, ...prev.readings],
       }));
     },
     [commitUpdate]

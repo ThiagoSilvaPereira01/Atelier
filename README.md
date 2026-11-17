@@ -1,7 +1,7 @@
 Atelier · Guia de Instalação
 1. Windows (.exe Instalador)
-Arquivo do instalador: Atelier Setup 1.0.0.exe
-Caminho na pasta: C:\Users\thiagosilva\Documents\Atelier\Atelier\release\Atelier Setup 1.0.0.exe
+Arquivo do instalador: Atelier Setup 1.0.0.exe (gerado com npm run electron:build)
+Caminho na pasta: C:\Users\thiag\Documents\atlelie\Atelier\release\Atelier Setup 1.0.0.exe
 Como instalar no computador/notebook:
 Dê um duplo clique em Atelier Setup 1.0.0.exe (pode enviar esse arquivo para o notebook da Raquel por WhatsApp/Google Drive/pendrive).
 Siga o instalador (Avançar → Instalar).
@@ -11,7 +11,7 @@ Ao abrir, entre com a conta Google ou E-mail e senha — todos os dados ficam si
 Para instalar no celular como aplicativo na tela inicial:
 
 No PowerShell, publique a versão web no Firebase Hosting:
-cd C:\Users\thiagosilva\Documents\Atelier\Atelier
+cd C:\Users\thiag\Documents\atlelie\Atelier
 npx.cmd firebase-tools login
 npx.cmd firebase-tools deploy --only hosting
 Abra o link gerado (https://atelier-649da.web.app) no celular:

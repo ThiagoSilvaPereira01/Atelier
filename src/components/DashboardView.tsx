@@ -256,36 +256,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
 
-          <div className="list-stack">
-            {data.habits.map((h) => {
-              const done = h.completedDates.includes(today);
-              return (
-                <div
-                  key={h.id}
-                  className="list-row"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => onToggleHabitToday(h.id, today)}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span>{h.icon}</span>
-                    <span
-                      style={{
-                        fontSize: '0.88rem',
-                        fontWeight: 500,
-                        textDecoration: done ? 'line-through' : 'none',
-                        color: done ? 'var(--text-muted)' : 'var(--text-primary)',
-                      }}
-                    >
-                      {h.name}
+          {data.habits.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+              Nenhum hábito cadastrado ainda. Adicione o primeiro na aba Hábitos.
+            </p>
+          ) : (
+            <div className="list-stack">
+              {data.habits.map((h) => {
+                const done = h.completedDates.includes(today);
+                return (
+                  <div
+                    key={h.id}
+                    className="list-row"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => onToggleHabitToday(h.id, today)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span>{h.icon}</span>
+                      <span
+                        style={{
+                          fontSize: '0.88rem',
+                          fontWeight: 500,
+                          textDecoration: done ? 'line-through' : 'none',
+                          color: done ? 'var(--text-muted)' : 'var(--text-primary)',
+                        }}
+                      >
+                        {h.name}
+                      </span>
+                    </div>
+                    <span className={`pill ${done ? 'pill-success' : 'pill-neutral'}`}>
+                      {done ? 'Feito' : 'Marcar'}
                     </span>
                   </div>
-                  <span className={`pill ${done ? 'pill-success' : 'pill-neutral'}`}>
-                    {done ? 'Feito' : 'Marcar'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </section>
 
         {/* Leituras & Provas */}
@@ -300,29 +306,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
 
-          <div className="list-stack">
-            {data.readings.slice(0, 3).map((r) => (
-              <div key={r.id} className="list-row">
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{r.title}</div>
-                  <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
-                    {r.author} · {r.course}
+          {data.readings.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+              Nenhuma leitura cadastrada ainda.
+            </p>
+          ) : (
+            <div className="list-stack">
+              {data.readings.slice(0, 3).map((r) => (
+                <div key={r.id} className="list-row">
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{r.title}</div>
+                    <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+                      {r.author} · {r.course}
+                    </div>
                   </div>
+                  <span
+                    className={`pill ${
+                      r.status === 'Fichado'
+                        ? 'pill-success'
+                        : r.status === 'Lendo'
+                        ? 'pill-warning'
+                        : 'pill-neutral'
+                    }`}
+                  >
+                    {r.status}
+                  </span>
                 </div>
-                <span
-                  className={`pill ${
-                    r.status === 'Fichado'
-                      ? 'pill-success'
-                      : r.status === 'Lendo'
-                      ? 'pill-warning'
-                      : 'pill-neutral'
-                  }`}
-                >
-                  {r.status}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </div>
