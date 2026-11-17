@@ -12,6 +12,8 @@ import {
   Moon,
   Sparkles,
   LogOut,
+  Menu,
+  X,
 } from 'lucide-react';
 import type { TabId, ThemeMode } from './types';
 import { useAppData } from './hooks/useAppData';
@@ -43,11 +45,11 @@ const MOBILE_NAV_ITEMS: { id: TabId; label: string; icon: React.ReactNode }[] = 
   { id: 'estudos', label: 'Estudos', icon: <BookOpen size={18} /> },
   { id: 'tarefas', label: 'Tarefas', icon: <CheckSquare size={18} /> },
   { id: 'financeiro', label: 'Finanças', icon: <Wallet size={18} /> },
-  { id: 'ajustes', label: 'Ajustes', icon: <Settings size={18} /> },
 ];
 
 export function App() {
   const [activeTab, setActiveTab] = useState<TabId>('inicio');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const store = useAppData();
   const { data } = store;
 
@@ -161,7 +163,7 @@ export function App() {
               {data.settings.brandName}
             </span>
           </div>
-          <div style={{ display: 'flex', gap: '6px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
               className="theme-pill-btn active"
               style={{ padding: '6px 10px' }}
@@ -177,8 +179,61 @@ export function App() {
                 ? 'Claro'
                 : 'Escuro'}
             </button>
+            <button
+              className="theme-pill-btn active"
+              style={{ padding: '6px 8px' }}
+              onClick={() => setMobileMenuOpen((v) => !v)}
+              aria-label="Abrir menu"
+            >
+              {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
           </div>
         </header>
+
+        {mobileMenuOpen && (
+          <div className="mobile-drawer-overlay" onClick={() => setMobileMenuOpen(false)}>
+            <div className="mobile-drawer" onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Todas as abas</span>
+                <button className="btn-icon" onClick={() => setMobileMenuOpen(false)}>
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="list-stack">
+                {NAV_ITEMS.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+                    style={{
+                      color: activeTab === item.id ? 'var(--accent-text)' : 'var(--text-primary)',
+                      background: activeTab === item.id ? 'var(--accent)' : 'var(--bg-card-soft)',
+                    }}
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      setMobileMenuOpen(false);
+                    }}
+                  >
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+                {store.user && store.auth && (
+                  <button
+                    className="nav-item"
+                    style={{ color: 'var(--danger)', background: 'var(--danger-soft)' }}
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      logoutFirebase(store.auth!);
+                    }}
+                  >
+                    <LogOut size={17} />
+                    <span>Sair da conta</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <main className="main-content">
           {activeTab === 'inicio' && (
@@ -288,12 +343,24 @@ export function App() {
           <button
             key={item.id}
             className={`mobile-nav-btn ${activeTab === item.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(item.id)}
+            onClick={() => {
+              setActiveTab(item.id);
+              setMobileMenuOpen(false);
+            }}
           >
             {item.icon}
             <span>{item.label}</span>
           </button>
         ))}
+        <button
+          className={`mobile-nav-btn ${
+            ['habitos', 'metas', 'ajustes'].includes(activeTab) || mobileMenuOpen ? 'active' : ''
+          }`}
+          onClick={() => setMobileMenuOpen((v) => !v)}
+        >
+          <Menu size={18} />
+          <span>Mais</span>
+        </button>
       </nav>
     </div>
   );

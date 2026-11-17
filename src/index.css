@@ -608,4 +608,24 @@ body {
   .mobile-nav-btn.active {
     color: var(--accent);
   }
+
+  .mobile-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 50;
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .mobile-drawer {
+    width: 100%;
+    background: var(--bg-card);
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    padding: 20px 18px 28px;
+    max-height: 82vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-md);
+  }
 }
