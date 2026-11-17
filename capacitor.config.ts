@@ -5,6 +5,10 @@ const config: CapacitorConfig = {
   appName: 'Atelier',
   webDir: 'dist',
   plugins: {
+    StatusBar: {
+      style: 'LIGHT',
+      backgroundColor: '#fbf6f2',
+    },
     SocialLogin: {
       providers: {
         google: true,

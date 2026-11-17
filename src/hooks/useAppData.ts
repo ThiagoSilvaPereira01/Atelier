@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import type { User, Auth } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import type {
@@ -67,9 +69,22 @@ export function useAppData() {
     dataRef.current = data;
   }, [data]);
 
-  // Apply theme attribute to document root
+  // Apply theme attribute to document root and sync native status bar
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', data.settings.theme);
+
+    if (!Capacitor.isNativePlatform()) return;
+
+    const isDark = data.settings.theme === 'dark';
+    const bgColor =
+      data.settings.theme === 'dark'
+        ? '#121316'
+        : data.settings.theme === 'light'
+        ? '#fafafa'
+        : '#fbf6f2';
+
+    StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {});
+    StatusBar.setBackgroundColor({ color: bgColor }).catch(() => {});
   }, [data.settings.theme]);
 
   // Save to localStorage whenever data changes
