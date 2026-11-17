@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { type Auth, updateProfile } from 'firebase/auth';
 import { Mail, Lock, User as UserIcon, AlertCircle, Sparkles } from 'lucide-react';
 import {
@@ -21,6 +22,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ auth }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isNativeApp = Capacitor.isNativePlatform();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -270,18 +272,20 @@ export const LoginView: React.FC<LoginViewProps> = ({ auth }) => {
           Continuar com Google
         </button>
 
-        <div style={{ textAlign: 'center', marginTop: '16px' }}>
-          <a
-            href="baixar/"
-            style={{
-              fontSize: '0.8rem',
-              color: 'var(--text-secondary)',
-              textDecoration: 'underline',
-            }}
-          >
-            Baixar aplicativo (.exe / .apk)
-          </a>
-        </div>
+        {!isNativeApp && (
+          <div style={{ textAlign: 'center', marginTop: '16px' }}>
+            <a
+              href="baixar/"
+              style={{
+                fontSize: '0.8rem',
+                color: 'var(--text-secondary)',
+                textDecoration: 'underline',
+              }}
+            >
+              Baixar aplicativo (.exe / .apk)
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );
