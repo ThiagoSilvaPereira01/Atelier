@@ -8,8 +8,9 @@ import {
   Sparkles,
   CheckCircle2,
   AlertCircle,
+  Star,
 } from 'lucide-react';
-import type { AppSettings, FirebaseConfig, ThemeMode } from '../types';
+import type { AppSettings, FirebaseConfig, TabId, ThemeMode } from '../types';
 import {
   loginWithEmail,
   registerWithEmail,
@@ -37,6 +38,20 @@ const BRAND_SUGGESTIONS = [
   { name: 'Raquel · Psi', subtitle: 'ESTUDOS & VIDA' },
   { name: 'Espaço Raquel', subtitle: 'PSICOLOGIA & ROTINA' },
 ];
+
+const FAVORITE_TAB_OPTIONS: { id: TabId; label: string }[] = [
+  { id: 'inicio', label: 'Início' },
+  { id: 'agenda', label: 'Agenda' },
+  { id: 'estudos', label: 'Estudos' },
+  { id: 'tarefas', label: 'Tarefas' },
+  { id: 'financeiro', label: 'Finanças' },
+  { id: 'habitos', label: 'Hábitos' },
+  { id: 'metas', label: 'Metas' },
+  { id: 'perfil', label: 'Perfil' },
+  { id: 'ajustes', label: 'Ajustes' },
+];
+
+const DEFAULT_FAVORITES: TabId[] = ['inicio', 'agenda', 'estudos', 'tarefas', 'financeiro'];
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   settings,
@@ -285,6 +300,54 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 ))}
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Favoritos da barra inferior do celular */}
+        <section className="card span-2">
+          <div className="card-header">
+            <h2 className="card-title">
+              <Star size={18} style={{ color: 'var(--accent)' }} />
+              Abas favoritas no celular (até 5)
+            </h2>
+            <span className="pill pill-accent">
+              {(settings.mobileFavorites ?? DEFAULT_FAVORITES).length}/5 selecionadas
+            </span>
+          </div>
+          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+            Escolha quais atalhos ficam fixos na barra inferior do celular. As demais abas continuam
+            acessíveis no botão <strong>Mais</strong>.
+          </p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {FAVORITE_TAB_OPTIONS.map((tab) => {
+              const current = settings.mobileFavorites ?? DEFAULT_FAVORITES;
+              const selected = current.includes(tab.id);
+              const handleToggleFav = () => {
+                if (selected) {
+                  if (current.length <= 1) return;
+                  onUpdateSettings({
+                    mobileFavorites: current.filter((id) => id !== tab.id),
+                  });
+                } else {
+                  if (current.length >= 5) return;
+                  onUpdateSettings({
+                    mobileFavorites: [...current, tab.id],
+                  });
+                }
+              };
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`btn ${selected ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ padding: '7px 12px', fontSize: '0.82rem' }}
+                  onClick={handleToggleFav}
+                >
+                  <Star size={13} fill={selected ? 'currentColor' : 'none'} />
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         </section>
 

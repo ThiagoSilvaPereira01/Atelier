@@ -1,5 +1,14 @@
-import React, { useState } from 'react';
-import { Calendar, Plus, Trash2, MapPin, Clock } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import {
+  Calendar,
+  Plus,
+  Trash2,
+  MapPin,
+  Clock,
+  ExternalLink,
+  Download,
+  Upload,
+} from 'lucide-react';
 import type { AgendaEvent, EventCategory } from '../types';
 import { getTodayISO } from '../data/initialData';
 
@@ -11,6 +20,94 @@ interface AgendaViewProps {
 
 const CATEGORIES: EventCategory[] = ['Faculdade', 'Estágio', 'Supervisão', 'Pessoal'];
 
+function toGoogleCalendarUrl(ev: AgendaEvent): string {
+  const dateCompact = ev.date.replaceAll('-', '');
+  const [hh, mm] = (ev.time || '09:00').split(':').map((n) => Number(n) || 0);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const startStr = `${dateCompact}T${pad(hh)}${pad(mm)}00`;
+  const endHour = (hh + 1) % 24;
+  const endStr = `${dateCompact}T${pad(endHour)}${pad(mm)}00`;
+
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `[${ev.category}] ${ev.title}`,
+    dates: `${startStr}/${endStr}`,
+  });
+  if (ev.location) params.set('location', ev.location);
+  if (ev.notes) params.set('details', ev.notes);
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function buildIcsContent(events: AgendaEvent[]): string {
+  const lines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Atelier//Psicologia & Rotina//PT',
+  ];
+  for (const ev of events) {
+    const dateCompact = ev.date.replaceAll('-', '');
+    const [hh, mm] = (ev.time || '09:00').split(':').map((n) => Number(n) || 0);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const start = `${dateCompact}T${pad(hh)}${pad(mm)}00`;
+    const end = `${dateCompact}T${pad((hh + 1) % 24)}${pad(mm)}00`;
+
+    lines.push('BEGIN:VEVENT');
+    lines.push(`UID:${ev.id}@atelier.app`);
+    lines.push(`DTSTART:${start}`);
+    lines.push(`DTEND:${end}`);
+    lines.push(`SUMMARY:[${ev.category}] ${ev.title}`);
+    if (ev.location) lines.push(`LOCATION:${ev.location}`);
+    if (ev.notes) lines.push(`DESCRIPTION:${ev.notes}`);
+    lines.push('END:VEVENT');
+  }
+  lines.push('END:VCALENDAR');
+  return lines.join('\r\n');
+}
+
+function parseIcsEvents(content: string): Omit<AgendaEvent, 'id'>[] {
+  const normalized = content.replace(/\r?\n[ \t]/g, '');
+  const blocks = normalized.split('BEGIN:VEVENT').slice(1);
+  const imported: Omit<AgendaEvent, 'id'>[] = [];
+
+  for (const block of blocks) {
+    const body = block.split('END:VEVENT')[0] || '';
+    const getField = (name: string): string => {
+      const regex = new RegExp(`^${name}(?:;[^:]*)?:(.*)$`, 'm');
+      const match = body.match(regex);
+      return match ? match[1].trim() : '';
+    };
+
+    const summary = getField('SUMMARY');
+    const dtstart = getField('DTSTART');
+    if (!summary || dtstart.length < 8) continue;
+
+    const year = dtstart.slice(0, 4);
+    const month = dtstart.slice(4, 6);
+    const day = dtstart.slice(6, 8);
+    const date = `${year}-${month}-${day}`;
+
+    let time = '09:00';
+    const tMatch = dtstart.match(/T(\d{2})(\d{2})/);
+    if (tMatch) {
+      time = `${tMatch[1]}:${tMatch[2]}`;
+    }
+
+    const location = getField('LOCATION') || undefined;
+    const notes = getField('DESCRIPTION') || undefined;
+
+    imported.push({
+      title: summary,
+      date,
+      time,
+      category: 'Pessoal',
+      location,
+      notes,
+    });
+  }
+
+  return imported;
+}
+
 export const AgendaView: React.FC<AgendaViewProps> = ({ events, onAdd, onDelete }) => {
   const [filter, setFilter] = useState<EventCategory | 'Todas'>('Todas');
   const [title, setTitle] = useState('');
@@ -19,6 +116,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ events, onAdd, onDelete 
   const [category, setCategory] = useState<EventCategory>('Faculdade');
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
+  const [importFeedback, setImportFeedback] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +135,34 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ events, onAdd, onDelete 
     setNotes('');
   };
 
+  const handleExportIcs = () => {
+    const ics = buildIcsContent(events);
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'atelier-agenda.ics';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportIcs = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    const parsed = parseIcsEvents(text);
+    for (const ev of parsed) {
+      onAdd(ev);
+    }
+    setImportFeedback(
+      parsed.length > 0
+        ? `${parsed.length} evento(s) importado(s) para sua agenda!`
+        : 'Nenhum evento válido encontrado no arquivo .ics.'
+    );
+    e.target.value = '';
+    window.setTimeout(() => setImportFeedback(null), 4000);
+  };
+
   const filtered = events
     .filter((ev) => filter === 'Todas' || ev.category === filter)
     .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
@@ -46,9 +173,45 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ events, onAdd, onDelete 
         <div>
           <p className="date-eyebrow">Organização semanal</p>
           <h1 className="page-title">Agenda</h1>
-          <p className="page-subtitle">Aulas, estágios, supervisões e compromissos pessoais.</p>
+          <p className="page-subtitle">
+            Aulas, estágios, supervisões e integração rápida com o Google Agenda.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".ics,text/calendar"
+            style={{ display: 'none' }}
+            onChange={handleImportIcs}
+          />
+          <button
+            className="btn btn-ghost"
+            onClick={() => fileInputRef.current?.click()}
+            title="Importar arquivo .ics exportado do Google Agenda"
+          >
+            <Upload size={15} /> Importar .ics
+          </button>
+          <button
+            className="btn btn-ghost"
+            onClick={handleExportIcs}
+            disabled={events.length === 0}
+            title="Baixar arquivo .ics para importar no Google Agenda"
+          >
+            <Download size={15} /> Exportar .ics
+          </button>
         </div>
       </header>
+
+      {importFeedback && (
+        <div
+          className="pill pill-accent"
+          style={{ marginBottom: '14px', padding: '8px 14px', borderRadius: '10px' }}
+        >
+          {importFeedback}
+        </div>
+      )}
 
       <section className="card" style={{ marginBottom: '20px' }}>
         <h2 className="card-title" style={{ marginBottom: '12px' }}>
@@ -104,8 +267,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ events, onAdd, onDelete 
               onChange={(e) => setNotes(e.target.value)}
             />
             <button type="submit" className="btn btn-primary">
-              <Plus size={16} />
-              Adicionar à agenda
+              <Plus size={16} /> Adicionar à agenda
             </button>
           </div>
         </form>
@@ -138,8 +300,8 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ events, onAdd, onDelete 
         ) : (
           <div className="list-stack">
             {filtered.map((ev) => (
-              <div key={ev.id} className="list-row">
-                <div>
+              <div key={ev.id} className="list-row" style={{ flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '190px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 600 }}>{ev.title}</span>
                     <span className="pill pill-accent">{ev.category}</span>
@@ -169,9 +331,21 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ events, onAdd, onDelete 
                     </p>
                   )}
                 </div>
-                <button className="btn-icon" onClick={() => onDelete(ev.id)} title="Excluir">
-                  <Trash2 size={16} />
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <a
+                    href={toGoogleCalendarUrl(ev)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-ghost"
+                    style={{ padding: '5px 10px', fontSize: '0.74rem', textDecoration: 'none' }}
+                    title="Abrir evento pronto no Google Agenda"
+                  >
+                    <ExternalLink size={13} /> Google Agenda
+                  </a>
+                  <button className="btn-icon" onClick={() => onDelete(ev.id)} title="Excluir">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

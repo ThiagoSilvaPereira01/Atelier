@@ -8,6 +8,7 @@ export type TabId =
   | 'financeiro'
   | 'habitos'
   | 'metas'
+  | 'perfil'
   | 'ajustes';
 
 export type EventCategory = 'Faculdade' | 'Estágio' | 'Supervisão' | 'Pessoal';
@@ -33,6 +34,7 @@ export interface TaskItem {
   priority: TaskPriority;
   dueDate?: string; // YYYY-MM-DD
   isReminder?: boolean;
+  notes?: string;
 }
 
 export type TransactionType = 'entrada' | 'saida' | 'receber';
@@ -44,6 +46,8 @@ export interface Transaction {
   type: TransactionType;
   category: string;
   date: string; // YYYY-MM-DD
+  paymentMethod?: string;
+  notes?: string;
 }
 
 export interface Habit {
@@ -95,6 +99,13 @@ export interface AppSettings {
   hideFinancialValues: boolean;
   internshipHoursDone: number;
   internshipHoursTarget: number;
+  mobileFavorites?: TabId[];
+  monthlyBudget?: number;
+  profileRole?: string;
+  profileCourse?: string;
+  profileInstitution?: string;
+  profileBio?: string;
+  profileFocus?: string;
 }
 
 export interface AppData {

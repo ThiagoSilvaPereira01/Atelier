@@ -8,6 +8,7 @@ import {
   Flame,
   Target,
   Settings,
+  User as UserIcon,
   Sun,
   Moon,
   Sparkles,
@@ -26,26 +27,22 @@ import { TasksView } from './components/TasksView';
 import { FinanceView } from './components/FinanceView';
 import { HabitsView } from './components/HabitsView';
 import { GoalsView } from './components/GoalsView';
+import { ProfileView } from './components/ProfileView';
 import { SettingsView } from './components/SettingsView';
 
-const NAV_ITEMS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'inicio', label: 'Início', icon: <Home size={17} /> },
-  { id: 'agenda', label: 'Agenda', icon: <Calendar size={17} /> },
-  { id: 'estudos', label: 'Estudos', icon: <BookOpen size={17} /> },
-  { id: 'tarefas', label: 'Tarefas & Lembretes', icon: <CheckSquare size={17} /> },
-  { id: 'financeiro', label: 'Financeiro', icon: <Wallet size={17} /> },
-  { id: 'habitos', label: 'Hábitos', icon: <Flame size={17} /> },
-  { id: 'metas', label: 'Metas', icon: <Target size={17} /> },
-  { id: 'ajustes', label: 'Ajustes', icon: <Settings size={17} /> },
+const NAV_ITEMS: { id: TabId; label: string; shortLabel: string; icon: React.ReactNode }[] = [
+  { id: 'inicio', label: 'Início', shortLabel: 'Início', icon: <Home size={17} /> },
+  { id: 'agenda', label: 'Agenda', shortLabel: 'Agenda', icon: <Calendar size={17} /> },
+  { id: 'estudos', label: 'Estudos', shortLabel: 'Estudos', icon: <BookOpen size={17} /> },
+  { id: 'tarefas', label: 'Tarefas & Lembretes', shortLabel: 'Tarefas', icon: <CheckSquare size={17} /> },
+  { id: 'financeiro', label: 'Financeiro', shortLabel: 'Finanças', icon: <Wallet size={17} /> },
+  { id: 'habitos', label: 'Hábitos', shortLabel: 'Hábitos', icon: <Flame size={17} /> },
+  { id: 'metas', label: 'Metas', shortLabel: 'Metas', icon: <Target size={17} /> },
+  { id: 'perfil', label: 'Perfil', shortLabel: 'Perfil', icon: <UserIcon size={17} /> },
+  { id: 'ajustes', label: 'Ajustes', shortLabel: 'Ajustes', icon: <Settings size={17} /> },
 ];
 
-const MOBILE_NAV_ITEMS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'inicio', label: 'Início', icon: <Home size={18} /> },
-  { id: 'agenda', label: 'Agenda', icon: <Calendar size={18} /> },
-  { id: 'estudos', label: 'Estudos', icon: <BookOpen size={18} /> },
-  { id: 'tarefas', label: 'Tarefas', icon: <CheckSquare size={18} /> },
-  { id: 'financeiro', label: 'Finanças', icon: <Wallet size={18} /> },
-];
+const DEFAULT_MOBILE_FAVORITES: TabId[] = ['inicio', 'agenda', 'estudos', 'tarefas', 'financeiro'];
 
 export function App() {
   const [activeTab, setActiveTab] = useState<TabId>('inicio');
@@ -78,6 +75,18 @@ export function App() {
   const setTheme = (theme: ThemeMode) => {
     store.updateSettings({ theme });
   };
+
+  const favoriteIds =
+    data.settings.mobileFavorites && data.settings.mobileFavorites.length > 0
+      ? data.settings.mobileFavorites
+      : DEFAULT_MOBILE_FAVORITES;
+
+  const mobileNavItems = favoriteIds
+    .map((id) => NAV_ITEMS.find((n) => n.id === id))
+    .filter((item): item is (typeof NAV_ITEMS)[number] => Boolean(item))
+    .slice(0, 5);
+
+  const activeInBottomBar = mobileNavItems.some((item) => item.id === activeTab);
 
   const syncLabel =
     store.syncStatus === 'synced'
@@ -164,6 +173,18 @@ export function App() {
             </span>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              className="theme-pill-btn active"
+              style={{ padding: '6px 8px' }}
+              onClick={() => {
+                setActiveTab('perfil');
+                setMobileMenuOpen(false);
+              }}
+              aria-label="Abrir perfil"
+              title="Meu Perfil"
+            >
+              <UserIcon size={16} />
+            </button>
             <button
               className="theme-pill-btn active"
               style={{ padding: '6px 10px' }}
@@ -283,6 +304,7 @@ export function App() {
             <TasksView
               tasks={data.tasks}
               onAdd={store.addTask}
+              onUpdate={store.updateTask}
               onToggle={store.toggleTask}
               onDelete={store.deleteTask}
             />
@@ -292,12 +314,15 @@ export function App() {
             <FinanceView
               transactions={data.transactions}
               hideValues={data.settings.hideFinancialValues}
+              monthlyBudget={data.settings.monthlyBudget}
+              onUpdateMonthlyBudget={(monthlyBudget) => store.updateSettings({ monthlyBudget })}
               onToggleHide={() =>
                 store.updateSettings({
                   hideFinancialValues: !data.settings.hideFinancialValues,
                 })
               }
               onAdd={store.addTransaction}
+              onUpdate={store.updateTransaction}
               onDelete={store.deleteTransaction}
             />
           )}
@@ -320,6 +345,14 @@ export function App() {
             />
           )}
 
+          {activeTab === 'perfil' && (
+            <ProfileView
+              data={data}
+              user={store.user}
+              onUpdateSettings={store.updateSettings}
+            />
+          )}
+
           {activeTab === 'ajustes' && (
             <SettingsView
               settings={data.settings}
@@ -339,7 +372,7 @@ export function App() {
 
       {/* Mobile Bottom Nav */}
       <nav className="mobile-bottom-nav">
-        {MOBILE_NAV_ITEMS.map((item) => (
+        {mobileNavItems.map((item) => (
           <button
             key={item.id}
             className={`mobile-nav-btn ${activeTab === item.id ? 'active' : ''}`}
@@ -349,13 +382,11 @@ export function App() {
             }}
           >
             {item.icon}
-            <span>{item.label}</span>
+            <span>{item.shortLabel}</span>
           </button>
         ))}
         <button
-          className={`mobile-nav-btn ${
-            ['habitos', 'metas', 'ajustes'].includes(activeTab) || mobileMenuOpen ? 'active' : ''
-          }`}
+          className={`mobile-nav-btn ${!activeInBottomBar || mobileMenuOpen ? 'active' : ''}`}
           onClick={() => setMobileMenuOpen((v) => !v)}
         >
           <Menu size={18} />
