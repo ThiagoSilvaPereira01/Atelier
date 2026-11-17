@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Auth, User } from 'firebase/auth';
 import {
   Palette,
@@ -15,6 +15,7 @@ import {
   registerWithEmail,
   loginWithGoogle,
   logoutFirebase,
+  translateAuthError,
 } from '../lib/firebase';
 
 interface SettingsViewProps {
@@ -59,6 +60,46 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  const [draftIdentity, setDraftIdentity] = useState<{
+    userName?: string;
+    brandName?: string;
+    brandSubtitle?: string;
+  }>({});
+  const [confirmReset, setConfirmReset] = useState(false);
+  const identityTimerRef = useRef<number | null>(null);
+
+  const userNameValue = draftIdentity.userName ?? settings.userName;
+  const brandNameValue = draftIdentity.brandName ?? settings.brandName;
+  const brandSubtitleValue = draftIdentity.brandSubtitle ?? settings.brandSubtitle;
+
+  useEffect(() => {
+    return () => {
+      if (identityTimerRef.current !== null) {
+        window.clearTimeout(identityTimerRef.current);
+      }
+    };
+  }, []);
+
+  const scheduleIdentityUpdate = (partial: Partial<AppSettings>) => {
+    if (identityTimerRef.current !== null) {
+      window.clearTimeout(identityTimerRef.current);
+    }
+    identityTimerRef.current = window.setTimeout(() => {
+      identityTimerRef.current = null;
+      onUpdateSettings(partial);
+      setDraftIdentity({});
+    }, 400);
+  };
+
+  const flushIdentityUpdate = (partial: Partial<AppSettings>) => {
+    if (identityTimerRef.current !== null) {
+      window.clearTimeout(identityTimerRef.current);
+      identityTimerRef.current = null;
+    }
+    onUpdateSettings(partial);
+    setDraftIdentity({});
+  };
+
   const handleSaveFirebase = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
@@ -90,7 +131,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       }
       setAuthMessage('Conectado com sucesso! Seus dados já estão sincronizados na nuvem.');
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Erro na autenticação');
+      setAuthError(translateAuthError(err));
     }
   };
 
@@ -102,7 +143,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       await loginWithGoogle(auth);
       setAuthMessage('Conectado com Google!');
     } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Erro no login com Google');
+      setAuthError(translateAuthError(err));
     }
   };
 
@@ -173,8 +214,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </label>
               <input
                 className="input"
-                value={settings.userName}
-                onChange={(e) => onUpdateSettings({ userName: e.target.value })}
+                value={userNameValue}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDraftIdentity((prev) => ({ ...prev, userName: val }));
+                  scheduleIdentityUpdate({ userName: val });
+                }}
+                onBlur={() => {
+                  if (draftIdentity.userName !== undefined) {
+                    flushIdentityUpdate({ userName: draftIdentity.userName });
+                  }
+                }}
               />
             </div>
             <div>
@@ -183,8 +233,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </label>
               <input
                 className="input"
-                value={settings.brandName}
-                onChange={(e) => onUpdateSettings({ brandName: e.target.value })}
+                value={brandNameValue}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDraftIdentity((prev) => ({ ...prev, brandName: val }));
+                  scheduleIdentityUpdate({ brandName: val });
+                }}
+                onBlur={() => {
+                  if (draftIdentity.brandName !== undefined) {
+                    flushIdentityUpdate({ brandName: draftIdentity.brandName });
+                  }
+                }}
               />
             </div>
             <div>
@@ -193,8 +252,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </label>
               <input
                 className="input"
-                value={settings.brandSubtitle}
-                onChange={(e) => onUpdateSettings({ brandSubtitle: e.target.value })}
+                value={brandSubtitleValue}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setDraftIdentity((prev) => ({ ...prev, brandSubtitle: val }));
+                  scheduleIdentityUpdate({ brandSubtitle: val });
+                }}
+                onBlur={() => {
+                  if (draftIdentity.brandSubtitle !== undefined) {
+                    flushIdentityUpdate({ brandSubtitle: draftIdentity.brandSubtitle });
+                  }
+                }}
               />
             </div>
 
@@ -208,9 +276,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     key={s.name}
                     className="btn btn-ghost"
                     style={{ padding: '5px 10px', fontSize: '0.76rem' }}
-                    onClick={() =>
-                      onUpdateSettings({ brandName: s.name, brandSubtitle: s.subtitle })
-                    }
+                    onClick={() => {
+                      flushIdentityUpdate({ brandName: s.name, brandSubtitle: s.subtitle });
+                    }}
                   >
                     {s.name}
                   </button>
@@ -390,9 +458,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 Zera agenda, tarefas, finanças, hábitos, metas e estudos desta conta.
               </div>
             </div>
-            <button className="btn btn-ghost" onClick={onResetDemo}>
-              <RotateCcw size={15} /> Limpar tudo
-            </button>
+            {confirmReset ? (
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--danger)', fontWeight: 600 }}>
+                  Tem certeza? Essa ação não pode ser desfeita.
+                </span>
+                <button
+                  className="btn btn-primary"
+                  style={{ backgroundColor: 'var(--danger)', color: '#ffffff' }}
+                  onClick={() => {
+                    setConfirmReset(false);
+                    onResetDemo();
+                  }}
+                >
+                  Confirmar limpeza
+                </button>
+                <button className="btn btn-ghost" onClick={() => setConfirmReset(false)}>
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <button className="btn btn-ghost" onClick={() => setConfirmReset(true)}>
+                <RotateCcw size={15} /> Limpar tudo
+              </button>
+            )}
           </div>
         </section>
       </div>

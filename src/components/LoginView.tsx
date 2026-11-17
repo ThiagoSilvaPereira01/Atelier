@@ -1,36 +1,17 @@
 import React, { useState } from 'react';
 import { type Auth, updateProfile } from 'firebase/auth';
 import { Mail, Lock, User as UserIcon, AlertCircle, Sparkles } from 'lucide-react';
-import { loginWithEmail, registerWithEmail, loginWithGoogle } from '../lib/firebase';
+import {
+  loginWithEmail,
+  registerWithEmail,
+  loginWithGoogle,
+  translateAuthError,
+  setPendingRegistrationName,
+  clearPendingRegistrationName,
+} from '../lib/firebase';
 
 interface LoginViewProps {
   auth: Auth | null;
-}
-
-function translateAuthError(err: unknown): string {
-  const msg = err instanceof Error ? err.message : String(err);
-  if (msg.includes('auth/invalid-credential') || msg.includes('auth/wrong-password')) {
-    return 'E-mail ou senha incorretos.';
-  }
-  if (msg.includes('auth/user-not-found')) {
-    return 'Nenhuma conta encontrada com esse e-mail.';
-  }
-  if (msg.includes('auth/email-already-in-use')) {
-    return 'Esse e-mail já está cadastrado. Tente entrar.';
-  }
-  if (msg.includes('auth/weak-password')) {
-    return 'A senha precisa ter pelo menos 6 caracteres.';
-  }
-  if (msg.includes('auth/invalid-email')) {
-    return 'Digite um e-mail válido.';
-  }
-  if (msg.includes('auth/operation-not-allowed')) {
-    return 'Login por e-mail/senha ainda não foi ativado no Firebase Console.';
-  }
-  if (msg.includes('auth/popup-closed-by-user')) {
-    return 'Login com Google cancelado.';
-  }
-  return msg;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ auth }) => {
@@ -50,12 +31,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ auth }) => {
       if (mode === 'login') {
         await loginWithEmail(auth, email.trim(), password);
       } else {
+        setPendingRegistrationName(name);
         const cred = await registerWithEmail(auth, email.trim(), password);
         if (name.trim()) {
           await updateProfile(cred.user, { displayName: name.trim() });
         }
       }
     } catch (err) {
+      clearPendingRegistrationName();
       setError(translateAuthError(err));
     } finally {
       setLoading(false);
