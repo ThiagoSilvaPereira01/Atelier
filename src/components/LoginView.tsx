@@ -269,6 +269,19 @@ export const LoginView: React.FC<LoginViewProps> = ({ auth }) => {
           </svg>
           Continuar com Google
         </button>
+
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <a
+            href="baixar/"
+            style={{
+              fontSize: '0.8rem',
+              color: 'var(--text-secondary)',
+              textDecoration: 'underline',
+            }}
+          >
+            Baixar aplicativo (.exe / .apk)
+          </a>
+        </div>
       </div>
     </div>
   );
