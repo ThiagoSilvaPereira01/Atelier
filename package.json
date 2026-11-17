@@ -10,7 +10,9 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "electron:build": "npm.cmd run build && electron-builder --win nsis"
+    "electron:build": "npm.cmd run build && electron-builder --win nsis",
+    "android:sync": "npm.cmd run build && npx.cmd cap sync android",
+    "android:build": "npm.cmd run android:sync && powershell -Command \"Set-Location android; .\\gradlew.bat assembleDebug; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; Copy-Item -Force app\\build\\outputs\\apk\\debug\\app-debug.apk ..\\release\\Atelier-1.0.0.apk\""
   },
   "build": {
     "appId": "com.atelier.raquel",
@@ -37,12 +39,15 @@
     }
   },
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/core": "^8.6.2",
     "firebase": "^13.4.0",
     "lucide-react": "^1.74.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.6.2",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
