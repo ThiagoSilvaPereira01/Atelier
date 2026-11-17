@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { type Auth, updateProfile } from 'firebase/auth';
 import { Mail, Lock, User as UserIcon, AlertCircle, Sparkles } from 'lucide-react';
 import {
@@ -21,6 +22,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ auth }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isNativeAndroid = Capacitor.isNativePlatform();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -254,21 +256,36 @@ export const LoginView: React.FC<LoginViewProps> = ({ auth }) => {
           <span style={{ flex: 1, height: '1px', background: 'var(--border-color)' }} />
         </div>
 
-        <button
-          type="button"
-          className="btn btn-ghost"
-          style={{ width: '100%', padding: '11px' }}
-          onClick={handleGoogle}
-          disabled={loading}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              fill="#EA4335"
-              d="M12 10.2v3.9h5.5c-.2 1.3-1.5 3.9-5.5 3.9-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.9 1.5l2.7-2.6C16.9 3.3 14.7 2.4 12 2.4 6.7 2.4 2.4 6.7 2.4 12s4.3 9.6 9.6 9.6c5.5 0 9.2-3.9 9.2-9.4 0-.6-.1-1.1-.2-1.6H12z"
-            />
-          </svg>
-          Continuar com Google
-        </button>
+        {!isNativeAndroid ? (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            style={{ width: '100%', padding: '11px' }}
+            onClick={handleGoogle}
+            disabled={loading}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="#EA4335"
+                d="M12 10.2v3.9h5.5c-.2 1.3-1.5 3.9-5.5 3.9-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.9 1.5l2.7-2.6C16.9 3.3 14.7 2.4 12 2.4 6.7 2.4 2.4 6.7 2.4 12s4.3 9.6 9.6 9.6c5.5 0 9.2-3.9 9.2-9.4 0-.6-.1-1.1-.2-1.6H12z"
+              />
+            </svg>
+            Continuar com Google
+          </button>
+        ) : (
+          <p
+            style={{
+              fontSize: '0.78rem',
+              color: 'var(--text-secondary)',
+              textAlign: 'center',
+              background: 'var(--bg-card-soft)',
+              padding: '10px 12px',
+              borderRadius: '10px',
+            }}
+          >
+            No aplicativo Android (.apk), entre usando seu <strong>e-mail e senha</strong> acima.
+          </p>
+        )}
 
         <div style={{ textAlign: 'center', marginTop: '16px' }}>
           <a

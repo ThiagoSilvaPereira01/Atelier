@@ -237,6 +237,16 @@ export function useAppData() {
     [commitUpdate]
   );
 
+  const updateEvent = useCallback(
+    (id: string, partial: Partial<AgendaEvent>) => {
+      commitUpdate((prev) => ({
+        ...prev,
+        events: prev.events.map((e) => (e.id === id ? { ...e, ...partial } : e)),
+      }));
+    },
+    [commitUpdate]
+  );
+
   const addTask = useCallback(
     (task: Omit<TaskItem, 'id'>) => {
       commitUpdate((prev) => ({
@@ -267,6 +277,16 @@ export function useAppData() {
     [commitUpdate]
   );
 
+  const updateTask = useCallback(
+    (id: string, partial: Partial<TaskItem>) => {
+      commitUpdate((prev) => ({
+        ...prev,
+        tasks: prev.tasks.map((t) => (t.id === id ? { ...t, ...partial } : t)),
+      }));
+    },
+    [commitUpdate]
+  );
+
   const addTransaction = useCallback(
     (tx: Omit<Transaction, 'id'>) => {
       commitUpdate((prev) => ({
@@ -282,6 +302,16 @@ export function useAppData() {
       commitUpdate((prev) => ({
         ...prev,
         transactions: prev.transactions.filter((t) => t.id !== id),
+      }));
+    },
+    [commitUpdate]
+  );
+
+  const updateTransaction = useCallback(
+    (id: string, partial: Partial<Transaction>) => {
+      commitUpdate((prev) => ({
+        ...prev,
+        transactions: prev.transactions.map((t) => (t.id === id ? { ...t, ...partial } : t)),
       }));
     },
     [commitUpdate]
@@ -432,11 +462,14 @@ export function useAppData() {
     disconnectFirebase,
     updateSettings,
     addEvent,
+    updateEvent,
     deleteEvent,
     addTask,
+    updateTask,
     toggleTask,
     deleteTask,
     addTransaction,
+    updateTransaction,
     deleteTransaction,
     addHabit,
     toggleHabitDate,
