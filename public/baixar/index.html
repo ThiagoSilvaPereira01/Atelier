@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#8f4f46" />
+    <link rel="icon" type="image/png" href="../icon-192.png" />
+    <title>Baixar Atelier · Windows & Android</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Sacramento&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #fbf6f2;
+        --card: #ffffff;
+        --card-soft: #f6ede7;
+        --border: #eadbd1;
+        --text: #352421;
+        --text-sec: #755e59;
+        --text-muted: #9e8883;
+        --accent: #8f4f46;
+        --accent-btn: #b56b60;
+        --accent-soft: #f5e2de;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+        line-height: 1.55;
+      }
+
+      .container {
+        width: 100%;
+        max-width: 780px;
+      }
+
+      .hero {
+        text-align: center;
+        margin-bottom: 28px;
+      }
+
+      .brand-script {
+        font-family: 'Sacramento', cursive;
+        font-size: 3.4rem;
+        color: var(--accent);
+        line-height: 1;
+        display: block;
+      }
+
+      .eyebrow {
+        font-size: 0.7rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: 700;
+        margin-top: 4px;
+      }
+
+      h1 {
+        font-family: 'Cormorant Garamond', Georgia, serif;
+        font-size: 2.15rem;
+        font-weight: 700;
+        margin-top: 14px;
+        line-height: 1.15;
+      }
+
+      .subtitle {
+        color: var(--text-sec);
+        font-size: 0.95rem;
+        margin-top: 6px;
+      }
+
+      .version-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 12px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 0.78rem;
+        font-weight: 600;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 8px 24px rgba(53, 36, 33, 0.06);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .card.highlighted {
+        border-color: var(--accent-btn);
+        box-shadow: 0 10px 28px rgba(143, 79, 70, 0.14);
+      }
+
+      .card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .platform-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.15rem;
+        font-weight: 700;
+      }
+
+      .badge-rec {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 3px 9px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      .meta {
+        font-size: 0.84rem;
+        color: var(--text-sec);
+      }
+
+      .steps {
+        background: var(--card-soft);
+        border-radius: 14px;
+        padding: 12px 14px;
+        font-size: 0.8rem;
+        color: var(--text-sec);
+      }
+
+      .steps ol {
+        padding-left: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        padding: 12px 16px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 0.92rem;
+        text-decoration: none;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: opacity 0.15s ease, transform 0.1s ease;
+      }
+
+      .btn:active {
+        transform: scale(0.99);
+      }
+
+      .btn-primary {
+        background: var(--accent-btn);
+        color: #ffffff;
+      }
+
+      .btn-primary:hover {
+        opacity: 0.92;
+      }
+
+      .btn-ghost {
+        background: var(--card-soft);
+        color: var(--text);
+        border-color: var(--border);
+      }
+
+      .btn-ghost:hover {
+        border-color: var(--accent-btn);
+      }
+
+      .web-card {
+        margin-top: 18px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 18px 22px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+
+      .web-card .btn {
+        width: auto;
+        padding: 10px 18px;
+      }
+
+      .notice {
+        margin-top: 14px;
+        text-align: center;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+
+      .notice a {
+        color: var(--accent);
+      }
+
+      @media (max-width: 680px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .web-card .btn {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <header class="hero">
+        <span class="brand-script">Atelier</span>
+        <div class="eyebrow">PSICOLOGIA &amp; ROTINA</div>
+        <h1>Baixar o aplicativo</h1>
+        <p class="subtitle">
+          Escolha seu aparelho abaixo para baixar o instalador direto e manter tudo sincronizado na nuvem.
+        </p>
+        <div id="release-status" class="version-badge">Versão 1.0.0 · Download direto</div>
+      </header>
+
+      <section class="grid">
+        <article id="card-windows" class="card">
+          <div>
+            <div class="card-top">
+              <div class="platform-title">
+                <span>💻</span>
+                <span>Windows</span>
+              </div>
+              <span id="badge-win" class="badge-rec" style="display: none">Seu aparelho</span>
+            </div>
+            <p class="meta" id="meta-win" style="margin-top: 8px">
+              Instalador para computador e notebook (<code>.exe</code>).
+            </p>
+          </div>
+
+          <div class="steps">
+            <ol>
+              <li>Clique em <strong>Baixar para Windows</strong> abaixo.</li>
+              <li>Abra o arquivo <code>.exe</code> baixado.</li>
+              <li>Se o Windows avisar, clique em <em>Mais informações → Executar mesmo assim</em>.</li>
+            </ol>
+          </div>
+
+          <a
+            id="btn-win"
+            class="btn btn-primary"
+            href="https://github.com/ThiagoSilvaPereira01/Atelier/releases/latest/download/Atelier.Setup.1.0.0.exe"
+          >
+            Baixar para Windows (.exe)
+          </a>
+        </article>
+
+        <article id="card-android" class="card">
+          <div>
+            <div class="card-top">
+              <div class="platform-title">
+                <span>📱</span>
+                <span>Android</span>
+              </div>
+              <span id="badge-and" class="badge-rec" style="display: none">Seu aparelho</span>
+            </div>
+            <p class="meta" id="meta-and" style="margin-top: 8px">
+              Aplicativo direto para celular Android (<code>.apk</code>).
+            </p>
+          </div>
+
+          <div class="steps">
+            <ol>
+              <li>Toque em <strong>Baixar para Android</strong> abaixo.</li>
+              <li>Abra o arquivo <code>.apk</code> quando terminar o download.</li>
+              <li>Permita <em>Instalar apps desconhecidos</em> e entre com e-mail e senha.</li>
+            </ol>
+          </div>
+
+          <a
+            id="btn-and"
+            class="btn btn-primary"
+            href="https://github.com/ThiagoSilvaPereira01/Atelier/releases/latest/download/Atelier-1.0.0.apk"
+          >
+            Baixar para Android (.apk)
+          </a>
+        </article>
+      </section>
+
+      <section class="web-card">
+        <div>
+          <div style="font-weight: 700; font-size: 0.98rem">🌐 Usar direto no navegador ou iPhone</div>
+          <div style="font-size: 0.82rem; color: var(--text-sec)">
+            Sem baixar arquivos: abra no navegador e adicione à tela inicial.
+          </div>
+        </div>
+        <a class="btn btn-ghost" href="../">Abrir Atelier Web</a>
+      </section>
+
+      <p class="notice" id="release-note">
+        Hospedado via <a href="https://github.com/ThiagoSilvaPereira01/Atelier/releases" target="_blank" rel="noopener noreferrer">GitHub Releases</a>.
+      </p>
+    </main>
+
+    <script>
+      (function () {
+        const ua = navigator.userAgent || '';
+        const isAndroid = /Android/i.test(ua);
+        const isWindows = /Windows/i.test(ua);
+
+        if (isAndroid) {
+          document.getElementById('card-android').classList.add('highlighted');
+          document.getElementById('badge-and').style.display = 'inline-block';
+        } else if (isWindows) {
+          document.getElementById('card-windows').classList.add('highlighted');
+          document.getElementById('badge-win').style.display = 'inline-block';
+        }
+
+        const formatMB = (bytes) => (bytes / (1024 * 1024)).toFixed(1).replace('.', ',') + ' MB';
+
+        fetch('https://api.github.com/repos/ThiagoSilvaPereira01/Atelier/releases/latest')
+          .then((res) => {
+            if (res.ok) return res.json();
+            return fetch('https://api.github.com/repos/ThiagoSilvaPereira01/Atelier/releases?per_page=1')
+              .then((r) => (r.ok ? r.json() : null))
+              .then((list) => (Array.isArray(list) && list.length > 0 ? list[0] : null));
+          })
+          .then((release) => {
+            if (!release || !Array.isArray(release.assets)) return;
+
+            const exe = release.assets.find((a) => a.name.toLowerCase().endsWith('.exe'));
+            const apk = release.assets.find((a) => a.name.toLowerCase().endsWith('.apk'));
+
+            if (release.tag_name) {
+              document.getElementById('release-status').textContent =
+                'Versão ' + release.tag_name + ' · Download direto';
+            }
+
+            if (exe) {
+              const btnWin = document.getElementById('btn-win');
+              btnWin.href = exe.browser_download_url;
+              document.getElementById('meta-win').textContent =
+                'Instalador Windows (' + formatMB(exe.size) + ') · Clique para baixar.';
+            }
+
+            if (apk) {
+              const btnAnd = document.getElementById('btn-and');
+              btnAnd.href = apk.browser_download_url;
+              document.getElementById('meta-and').textContent =
+                'Aplicativo Android (' + formatMB(apk.size) + ') · Clique para baixar.';
+            }
+          })
+          .catch(() => {
+            // Fallback already points directly to latest release download URLs
+          });
+      })();
+    </script>
+  </body>
+</html>
