@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
@@ -81,8 +81,14 @@ async function createWindow() {
     },
   });
 
-  // Allow Firebase Google Auth popups
-  win.webContents.setWindowOpenHandler(() => ({ action: 'allow' }));
+  // Allow Firebase Google Auth popups, open Google Calendar links in default browser
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url && url.startsWith('https://calendar.google.com/')) {
+      shell.openExternal(url);
+      return { action: 'deny' };
+    }
+    return { action: 'allow' };
+  });
 
   await win.loadURL(`http://localhost:${started.port}/`);
 }

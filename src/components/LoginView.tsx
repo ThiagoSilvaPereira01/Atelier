@@ -22,7 +22,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ auth }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isNativeApp = Capacitor.isNativePlatform();
+  const isInstalledApp =
+    Capacitor.isNativePlatform() ||
+    (typeof navigator !== 'undefined' && /Electron/i.test(navigator.userAgent));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -272,7 +274,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ auth }) => {
           Continuar com Google
         </button>
 
-        {!isNativeApp && (
+        {!isInstalledApp && (
           <div style={{ textAlign: 'center', marginTop: '16px' }}>
             <a
               href="baixar/"

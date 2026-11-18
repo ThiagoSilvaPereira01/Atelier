@@ -274,8 +274,10 @@ export function App() {
           {activeTab === 'agenda' && (
             <AgendaView
               events={data.events}
+              tasks={data.tasks}
               onAdd={store.addEvent}
               onDelete={store.deleteEvent}
+              onToggleTask={store.toggleTask}
             />
           )}
 
