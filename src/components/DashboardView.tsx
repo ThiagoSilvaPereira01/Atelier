@@ -121,7 +121,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{ev.title}</div>
                     <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                      {ev.time} {ev.location ? `· ${ev.location}` : ''}
+                      {ev.allDay ? 'Dia inteiro' : ev.endTime ? `${ev.time} – ${ev.endTime}` : ev.time}{' '}
+                      {ev.location ? `· ${ev.location}` : ''}
                     </div>
                   </div>
                   <span className="pill pill-accent">{ev.category}</span>

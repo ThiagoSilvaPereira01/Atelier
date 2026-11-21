@@ -16,9 +16,15 @@ export interface AgendaEvent {
   title: string;
   date: string; // YYYY-MM-DD
   time: string; // HH:mm
+  endTime?: string; // HH:mm
+  allDay?: boolean;
   category: EventCategory;
   location?: string;
   notes?: string;
+  googleEventId?: string;
+  googleHtmlLink?: string;
+  googleUpdated?: string;
+  source?: 'atelier' | 'google';
 }
 
 export type TaskCategory = 'Faculdade' | 'Monitoria' | 'Pessoal';
@@ -85,6 +91,8 @@ export interface AppSettings {
   profileInstitution?: string;
   profileBio?: string;
   profileFocus?: string;
+  googleCalendarLastSyncAt?: string;
+  googleCalendarEmail?: string;
 }
 
 export interface AppData {
