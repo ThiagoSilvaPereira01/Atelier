@@ -6,8 +6,6 @@ export type TabId =
   | 'estudos'
   | 'tarefas'
   | 'financeiro'
-  | 'habitos'
-  | 'metas'
   | 'perfil'
   | 'ajustes';
 
@@ -23,7 +21,7 @@ export interface AgendaEvent {
   notes?: string;
 }
 
-export type TaskCategory = 'Faculdade' | 'Estágio' | 'Pessoal';
+export type TaskCategory = 'Faculdade' | 'Monitoria' | 'Pessoal';
 export type TaskPriority = 'alta' | 'media' | 'baixa';
 
 export interface TaskItem {
@@ -47,25 +45,6 @@ export interface Transaction {
   category: string;
   date: string; // YYYY-MM-DD
   paymentMethod?: string;
-  notes?: string;
-}
-
-export interface Habit {
-  id: string;
-  name: string;
-  icon: string;
-  targetDaysPerWeek: number;
-  completedDates: string[]; // YYYY-MM-DD[]
-}
-
-export type GoalArea = 'Acadêmico' | 'Estágio & Carreira' | 'Pessoal' | 'Financeiro';
-
-export interface Goal {
-  id: string;
-  title: string;
-  area: GoalArea;
-  progress: number; // 0-100
-  targetDate?: string;
   notes?: string;
 }
 
@@ -113,8 +92,6 @@ export interface AppData {
   events: AgendaEvent[];
   tasks: TaskItem[];
   transactions: Transaction[];
-  habits: Habit[];
-  goals: Goal[];
   courses: Course[];
   readings: StudyReading[];
 }

@@ -8,7 +8,6 @@ import {
   Circle,
   Eye,
   EyeOff,
-  Flame,
   ArrowRight,
 } from 'lucide-react';
 import type { AppData, TabId } from '../types';
@@ -18,7 +17,6 @@ interface DashboardViewProps {
   data: AppData;
   onNavigate: (tab: TabId) => void;
   onToggleTask: (id: string) => void;
-  onToggleHabitToday: (habitId: string, todayISO: string) => void;
   onToggleHideFinance: () => void;
 }
 
@@ -48,7 +46,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   data,
   onNavigate,
   onToggleTask,
-  onToggleHabitToday,
   onToggleHideFinance,
 }) => {
   const today = getTodayISO();
@@ -244,58 +241,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </section>
 
-        {/* Hábitos de hoje */}
-        <section className="card">
-          <div className="card-header">
-            <h2 className="card-title">
-              <Flame size={18} style={{ color: 'var(--accent)' }} />
-              Hábitos de hoje
-            </h2>
-            <button className="btn-icon" onClick={() => onNavigate('habitos')} title="Ver hábitos">
-              <ArrowRight size={16} />
-            </button>
-          </div>
-
-          {data.habits.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-              Nenhum hábito cadastrado ainda. Adicione o primeiro na aba Hábitos.
-            </p>
-          ) : (
-            <div className="list-stack">
-              {data.habits.map((h) => {
-                const done = h.completedDates.includes(today);
-                return (
-                  <div
-                    key={h.id}
-                    className="list-row"
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => onToggleHabitToday(h.id, today)}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span>{h.icon}</span>
-                      <span
-                        style={{
-                          fontSize: '0.88rem',
-                          fontWeight: 500,
-                          textDecoration: done ? 'line-through' : 'none',
-                          color: done ? 'var(--text-muted)' : 'var(--text-primary)',
-                        }}
-                      >
-                        {h.name}
-                      </span>
-                    </div>
-                    <span className={`pill ${done ? 'pill-success' : 'pill-neutral'}`}>
-                      {done ? 'Feito' : 'Marcar'}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
         {/* Leituras & Provas */}
-        <section className="card">
+        <section className="card span-2">
           <div className="card-header">
             <h2 className="card-title">
               <BookOpen size={18} style={{ color: 'var(--accent)' }} />
