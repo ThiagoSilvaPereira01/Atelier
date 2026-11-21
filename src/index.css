@@ -841,3 +841,16 @@ body {
     font-size: 0.56rem;
   }
 }
+
+@keyframes atelier-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spin {
+  animation: atelier-spin 0.9s linear infinite;
+}

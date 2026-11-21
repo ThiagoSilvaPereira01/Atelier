@@ -269,8 +269,18 @@ export function App() {
               events={data.events}
               tasks={data.tasks}
               onAdd={store.addEvent}
+              onUpdate={store.updateEvent}
               onDelete={store.deleteEvent}
               onToggleTask={store.toggleTask}
+              googleConnected={store.googleCalendarConnected}
+              googleSyncing={store.googleCalendarSyncing}
+              googleError={store.googleCalendarError}
+              googleMessage={store.googleCalendarMessage}
+              googleLastSyncAt={data.settings.googleCalendarLastSyncAt}
+              googleEmail={data.settings.googleCalendarEmail}
+              onConnectGoogle={store.connectAndSyncGoogleCalendar}
+              onSyncGoogle={store.syncGoogleCalendarNow}
+              onDisconnectGoogle={store.disconnectGoogleCalendar}
             />
           )}
 

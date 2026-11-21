@@ -26,6 +26,17 @@ import {
   saveUserData,
   consumePendingRegistrationName,
 } from '../lib/firebase';
+import {
+  clearGoogleCalendarSession,
+  connectGoogleCalendar,
+  createGoogleEvent,
+  deleteGoogleEvent,
+  getStoredGoogleCalendarSession,
+  GoogleCalendarApiError,
+  syncWithGoogleCalendar,
+  translateGoogleCalendarError,
+  updateGoogleEvent,
+} from '../lib/googleCalendar';
 
 const LOCAL_DATA_KEY = 'raquel_psi_app_data_v1';
 
@@ -69,6 +80,12 @@ export function useAppData() {
   const [authLoading, setAuthLoading] = useState<boolean>(() => Boolean(getSavedFirebaseConfig()));
   const [syncStatus, setSyncStatus] = useState<'local' | 'syncing' | 'synced' | 'error'>('local');
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [googleCalendarConnected, setGoogleCalendarConnected] = useState<boolean>(() =>
+    Boolean(getStoredGoogleCalendarSession())
+  );
+  const [googleCalendarSyncing, setGoogleCalendarSyncing] = useState<boolean>(false);
+  const [googleCalendarError, setGoogleCalendarError] = useState<string | null>(null);
+  const [googleCalendarMessage, setGoogleCalendarMessage] = useState<string | null>(null);
   const dataRef = useRef(data);
 
   useEffect(() => {
@@ -124,6 +141,10 @@ export function useAppData() {
         setAuthLoading(false);
         if (!firebaseUser) {
           setSyncStatus('local');
+          clearGoogleCalendarSession();
+          setGoogleCalendarConnected(false);
+          setGoogleCalendarError(null);
+          setGoogleCalendarMessage(null);
           const clean = createInitialData();
           dataRef.current = clean;
           setData(clean);
@@ -239,34 +260,178 @@ export function useAppData() {
     [commitUpdate]
   );
 
-  const addEvent = useCallback(
-    (event: Omit<AgendaEvent, 'id'>) => {
-      commitUpdate((prev) => ({
-        ...prev,
-        events: [...prev.events, { ...event, id: createId('ev') }],
-      }));
+  const handleGoogleBackgroundError = useCallback((err: unknown) => {
+    if (err instanceof GoogleCalendarApiError && err.status === 401) {
+      clearGoogleCalendarSession();
+      setGoogleCalendarConnected(false);
+    }
+    setGoogleCalendarError(translateGoogleCalendarError(err));
+  }, []);
+
+  const runGoogleSync = useCallback(
+    async (accessToken: string, email?: string) => {
+      setGoogleCalendarSyncing(true);
+      setGoogleCalendarError(null);
+      setGoogleCalendarMessage(null);
+      try {
+        const result = await syncWithGoogleCalendar(accessToken, dataRef.current.events, () =>
+          createId('ev')
+        );
+        const nowISO = new Date().toISOString();
+        commitUpdate((prev) => ({
+          ...prev,
+          events: result.events,
+          settings: {
+            ...prev.settings,
+            googleCalendarLastSyncAt: nowISO,
+            ...(email ? { googleCalendarEmail: email } : {}),
+          },
+        }));
+        setGoogleCalendarConnected(true);
+
+        const parts: string[] = [];
+        if (result.pulledCount > 0) parts.push(`${result.pulledCount} importado(s)`);
+        if (result.pushedCount > 0) parts.push(`${result.pushedCount} enviado(s)`);
+        if (result.updatedCount > 0) parts.push(`${result.updatedCount} atualizado(s)`);
+        if (result.removedCount > 0) parts.push(`${result.removedCount} removido(s)`);
+        setGoogleCalendarMessage(
+          parts.length > 0
+            ? `Google Agenda sincronizado: ${parts.join(', ')}.`
+            : 'Google Agenda já está em dia!'
+        );
+      } catch (err) {
+        if (err instanceof GoogleCalendarApiError && err.status === 401) {
+          clearGoogleCalendarSession();
+          setGoogleCalendarConnected(false);
+        }
+        setGoogleCalendarError(translateGoogleCalendarError(err));
+      } finally {
+        setGoogleCalendarSyncing(false);
+      }
     },
     [commitUpdate]
+  );
+
+  const connectAndSyncGoogleCalendar = useCallback(async () => {
+    setGoogleCalendarSyncing(true);
+    setGoogleCalendarError(null);
+    setGoogleCalendarMessage(null);
+    try {
+      const session = await connectGoogleCalendar(auth);
+      setGoogleCalendarConnected(true);
+      await runGoogleSync(session.accessToken, session.email);
+    } catch (err) {
+      setGoogleCalendarSyncing(false);
+      setGoogleCalendarError(translateGoogleCalendarError(err));
+    }
+  }, [auth, runGoogleSync]);
+
+  const syncGoogleCalendarNow = useCallback(async () => {
+    const session = getStoredGoogleCalendarSession();
+    if (!session) {
+      await connectAndSyncGoogleCalendar();
+      return;
+    }
+    await runGoogleSync(session.accessToken, session.email);
+  }, [connectAndSyncGoogleCalendar, runGoogleSync]);
+
+  const disconnectGoogleCalendar = useCallback(() => {
+    clearGoogleCalendarSession();
+    setGoogleCalendarConnected(false);
+    setGoogleCalendarError(null);
+    setGoogleCalendarMessage('Sessão do Google Agenda desconectada.');
+  }, []);
+
+  const addEvent = useCallback(
+    (event: Omit<AgendaEvent, 'id'>) => {
+      const newEvent: AgendaEvent = {
+        ...event,
+        id: createId('ev'),
+        source: event.source ?? 'atelier',
+      };
+      commitUpdate((prev) => ({
+        ...prev,
+        events: [...prev.events, newEvent],
+      }));
+
+      const session = getStoredGoogleCalendarSession();
+      if (session && !newEvent.googleEventId) {
+        createGoogleEvent(session.accessToken, newEvent)
+          .then((created) => {
+            commitUpdate((prev) => ({
+              ...prev,
+              events: prev.events.map((e) =>
+                e.id === newEvent.id
+                  ? {
+                      ...e,
+                      googleEventId: created.googleEventId,
+                      googleHtmlLink: created.googleHtmlLink,
+                      googleUpdated: created.googleUpdated,
+                    }
+                  : e
+              ),
+            }));
+          })
+          .catch(handleGoogleBackgroundError);
+      }
+    },
+    [commitUpdate, handleGoogleBackgroundError]
   );
 
   const deleteEvent = useCallback(
     (id: string) => {
+      const target = dataRef.current.events.find((e) => e.id === id);
       commitUpdate((prev) => ({
         ...prev,
         events: prev.events.filter((e) => e.id !== id),
       }));
+
+      const session = getStoredGoogleCalendarSession();
+      if (session && target?.googleEventId) {
+        deleteGoogleEvent(session.accessToken, target.googleEventId).catch(
+          handleGoogleBackgroundError
+        );
+      }
     },
-    [commitUpdate]
+    [commitUpdate, handleGoogleBackgroundError]
   );
 
   const updateEvent = useCallback(
     (id: string, partial: Partial<AgendaEvent>) => {
+      let updatedEvent: AgendaEvent | null = null;
       commitUpdate((prev) => ({
         ...prev,
-        events: prev.events.map((e) => (e.id === id ? { ...e, ...partial } : e)),
+        events: prev.events.map((e) => {
+          if (e.id !== id) return e;
+          updatedEvent = { ...e, ...partial };
+          return updatedEvent;
+        }),
       }));
+
+      const session = getStoredGoogleCalendarSession();
+      if (session && updatedEvent) {
+        const ev = updatedEvent as AgendaEvent;
+        if (ev.googleEventId) {
+          updateGoogleEvent(session.accessToken, ev.googleEventId, ev)
+            .then((res) => {
+              commitUpdate((prev) => ({
+                ...prev,
+                events: prev.events.map((e) =>
+                  e.id === id
+                    ? {
+                        ...e,
+                        googleHtmlLink: res.googleHtmlLink ?? e.googleHtmlLink,
+                        googleUpdated: res.googleUpdated ?? e.googleUpdated,
+                      }
+                    : e
+                ),
+              }));
+            })
+            .catch(handleGoogleBackgroundError);
+        }
+      }
     },
-    [commitUpdate]
+    [commitUpdate, handleGoogleBackgroundError]
   );
 
   const addTask = useCallback(
@@ -411,6 +576,13 @@ export function useAppData() {
     firebaseConfig,
     syncStatus,
     syncError,
+    googleCalendarConnected,
+    googleCalendarSyncing,
+    googleCalendarError,
+    googleCalendarMessage,
+    connectAndSyncGoogleCalendar,
+    syncGoogleCalendarNow,
+    disconnectGoogleCalendar,
     connectFirebase,
     disconnectFirebase,
     updateSettings,

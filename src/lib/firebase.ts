@@ -185,14 +185,14 @@ export async function registerWithEmail(auth: Auth, email: string, password: str
 
 let socialLoginInitialized = false;
 
-function getGoogleWebClientId(): string {
+export function getGoogleWebClientId(): string {
   const fromEnv = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
   if (fromEnv) return fromEnv;
   if (typeof __GOOGLE_WEB_CLIENT_ID__ !== 'undefined') return __GOOGLE_WEB_CLIENT_ID__;
   return '';
 }
 
-async function ensureNativeGoogleInitialized(webClientId: string): Promise<void> {
+export async function ensureNativeGoogleInitialized(webClientId: string): Promise<void> {
   if (socialLoginInitialized) return;
   await SocialLogin.initialize({
     google: {
@@ -226,6 +226,11 @@ export async function loginWithGoogle(auth: Auth) {
 }
 
 export async function logoutFirebase(auth: Auth) {
+  try {
+    sessionStorage.removeItem('atelier_google_calendar_session_v1');
+  } catch {
+    // Ignore storage errors
+  }
   if (Capacitor.isNativePlatform()) {
     try {
       const webClientId = getGoogleWebClientId();
