@@ -5,8 +5,6 @@ import {
   BookOpen,
   CheckSquare,
   Wallet,
-  Flame,
-  Target,
   Settings,
   User as UserIcon,
   Sun,
@@ -25,8 +23,6 @@ import { AgendaView } from './components/AgendaView';
 import { StudiesView } from './components/StudiesView';
 import { TasksView } from './components/TasksView';
 import { FinanceView } from './components/FinanceView';
-import { HabitsView } from './components/HabitsView';
-import { GoalsView } from './components/GoalsView';
 import { ProfileView } from './components/ProfileView';
 import { SettingsView } from './components/SettingsView';
 
@@ -36,8 +32,6 @@ const NAV_ITEMS: { id: TabId; label: string; shortLabel: string; icon: React.Rea
   { id: 'estudos', label: 'Estudos', shortLabel: 'Estudos', icon: <BookOpen size={17} /> },
   { id: 'tarefas', label: 'Tarefas & Lembretes', shortLabel: 'Tarefas', icon: <CheckSquare size={17} /> },
   { id: 'financeiro', label: 'Financeiro', shortLabel: 'Finanças', icon: <Wallet size={17} /> },
-  { id: 'habitos', label: 'Hábitos', shortLabel: 'Hábitos', icon: <Flame size={17} /> },
-  { id: 'metas', label: 'Metas', shortLabel: 'Metas', icon: <Target size={17} /> },
   { id: 'perfil', label: 'Perfil', shortLabel: 'Perfil', icon: <UserIcon size={17} /> },
   { id: 'ajustes', label: 'Ajustes', shortLabel: 'Ajustes', icon: <Settings size={17} /> },
 ];
@@ -76,10 +70,10 @@ export function App() {
     store.updateSettings({ theme });
   };
 
-  const favoriteIds =
-    data.settings.mobileFavorites && data.settings.mobileFavorites.length > 0
-      ? data.settings.mobileFavorites
-      : DEFAULT_MOBILE_FAVORITES;
+  const validFavorites = (data.settings.mobileFavorites ?? []).filter((id) =>
+    NAV_ITEMS.some((n) => n.id === id)
+  );
+  const favoriteIds = validFavorites.length > 0 ? validFavorites : DEFAULT_MOBILE_FAVORITES;
 
   const mobileNavItems = favoriteIds
     .map((id) => NAV_ITEMS.find((n) => n.id === id))
@@ -262,7 +256,6 @@ export function App() {
               data={data}
               onNavigate={setActiveTab}
               onToggleTask={store.toggleTask}
-              onToggleHabitToday={store.toggleHabitDate}
               onToggleHideFinance={() =>
                 store.updateSettings({
                   hideFinancialValues: !data.settings.hideFinancialValues,
@@ -326,24 +319,6 @@ export function App() {
               onAdd={store.addTransaction}
               onUpdate={store.updateTransaction}
               onDelete={store.deleteTransaction}
-            />
-          )}
-
-          {activeTab === 'habitos' && (
-            <HabitsView
-              habits={data.habits}
-              onAdd={store.addHabit}
-              onToggleDate={store.toggleHabitDate}
-              onDelete={store.deleteHabit}
-            />
-          )}
-
-          {activeTab === 'metas' && (
-            <GoalsView
-              goals={data.goals}
-              onAdd={store.addGoal}
-              onUpdateProgress={store.updateGoalProgress}
-              onDelete={store.deleteGoal}
             />
           )}
 

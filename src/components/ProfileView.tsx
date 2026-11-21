@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { User } from 'firebase/auth';
-import { User as UserIcon, GraduationCap, Sparkles, CheckCircle2, BookOpen, Target, Clock } from 'lucide-react';
+import { User as UserIcon, GraduationCap, Sparkles, CheckCircle2, BookOpen, Clock } from 'lucide-react';
 import type { AppData, AppSettings } from '../types';
 
 interface ProfileViewProps {
@@ -28,10 +28,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ data, user, onUpdateSe
 
   const completedTasks = data.tasks.filter((t) => t.completed).length;
   const fichadas = data.readings.filter((r) => r.status === 'Fichado').length;
-  const avgGoal =
-    data.goals.length > 0
-      ? Math.round(data.goals.reduce((acc, g) => acc + g.progress, 0) / data.goals.length)
-      : 0;
+  const totalCourses = data.courses.length;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,9 +179,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ data, user, onUpdateSe
           </div>
           <div className="metric-box">
             <div className="metric-label" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <Target size={13} /> Média das metas
+              <GraduationCap size={13} /> Disciplinas
             </div>
-            <div className="metric-value">{avgGoal}%</div>
+            <div className="metric-value">{totalCourses}</div>
           </div>
         </div>
       </section>

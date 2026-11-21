@@ -45,8 +45,6 @@ const FAVORITE_TAB_OPTIONS: { id: TabId; label: string }[] = [
   { id: 'estudos', label: 'Estudos' },
   { id: 'tarefas', label: 'Tarefas' },
   { id: 'financeiro', label: 'Finanças' },
-  { id: 'habitos', label: 'Hábitos' },
-  { id: 'metas', label: 'Metas' },
   { id: 'perfil', label: 'Perfil' },
   { id: 'ajustes', label: 'Ajustes' },
 ];
@@ -305,50 +303,60 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         {/* Favoritos da barra inferior do celular */}
         <section className="card span-2">
-          <div className="card-header">
-            <h2 className="card-title">
-              <Star size={18} style={{ color: 'var(--accent)' }} />
-              Abas favoritas no celular (até 5)
-            </h2>
-            <span className="pill pill-accent">
-              {(settings.mobileFavorites ?? DEFAULT_FAVORITES).length}/5 selecionadas
-            </span>
-          </div>
-          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
-            Escolha quais atalhos ficam fixos na barra inferior do celular. As demais abas continuam
-            acessíveis no botão <strong>Mais</strong>.
-          </p>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {FAVORITE_TAB_OPTIONS.map((tab) => {
-              const current = settings.mobileFavorites ?? DEFAULT_FAVORITES;
-              const selected = current.includes(tab.id);
-              const handleToggleFav = () => {
-                if (selected) {
-                  if (current.length <= 1) return;
-                  onUpdateSettings({
-                    mobileFavorites: current.filter((id) => id !== tab.id),
-                  });
-                } else {
-                  if (current.length >= 5) return;
-                  onUpdateSettings({
-                    mobileFavorites: [...current, tab.id],
-                  });
-                }
-              };
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  className={`btn ${selected ? 'btn-primary' : 'btn-ghost'}`}
-                  style={{ padding: '7px 12px', fontSize: '0.82rem' }}
-                  onClick={handleToggleFav}
-                >
-                  <Star size={13} fill={selected ? 'currentColor' : 'none'} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+          {(() => {
+            const validTabIds = new Set(FAVORITE_TAB_OPTIONS.map((t) => t.id));
+            const rawFavs = (settings.mobileFavorites ?? DEFAULT_FAVORITES).filter((id) =>
+              validTabIds.has(id)
+            );
+            const currentFavorites = rawFavs.length > 0 ? rawFavs : DEFAULT_FAVORITES;
+            return (
+              <>
+                <div className="card-header">
+                  <h2 className="card-title">
+                    <Star size={18} style={{ color: 'var(--accent)' }} />
+                    Abas favoritas no celular (até 5)
+                  </h2>
+                  <span className="pill pill-accent">
+                    {currentFavorites.length}/5 selecionadas
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                  Escolha quais atalhos ficam fixos na barra inferior do celular. As demais abas continuam
+                  acessíveis no botão <strong>Mais</strong>.
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {FAVORITE_TAB_OPTIONS.map((tab) => {
+                    const selected = currentFavorites.includes(tab.id);
+                    const handleToggleFav = () => {
+                      if (selected) {
+                        if (currentFavorites.length <= 1) return;
+                        onUpdateSettings({
+                          mobileFavorites: currentFavorites.filter((id) => id !== tab.id),
+                        });
+                      } else {
+                        if (currentFavorites.length >= 5) return;
+                        onUpdateSettings({
+                          mobileFavorites: [...currentFavorites, tab.id],
+                        });
+                      }
+                    };
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        className={`btn ${selected ? 'btn-primary' : 'btn-ghost'}`}
+                        style={{ padding: '7px 12px', fontSize: '0.82rem' }}
+                        onClick={handleToggleFav}
+                      >
+                        <Star size={13} fill={selected ? 'currentColor' : 'none'} />
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
         </section>
 
         {/* Firebase */}
@@ -518,7 +526,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <div>
               <div style={{ fontWeight: 600 }}>Limpar todos os meus dados</div>
               <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                Zera agenda, tarefas, finanças, hábitos, metas e estudos desta conta.
+                Zera agenda, tarefas, finanças e estudos desta conta.
               </div>
             </div>
             {confirmReset ? (

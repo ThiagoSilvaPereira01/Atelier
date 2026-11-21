@@ -36,8 +36,6 @@ export function createInitialData(userName = 'Raquel'): AppData {
     events: [],
     tasks: [],
     transactions: [],
-    habits: [],
-    goals: [],
     courses: [],
     readings: [],
   };

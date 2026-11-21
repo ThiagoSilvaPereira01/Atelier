@@ -9,8 +9,6 @@ import type {
   AgendaEvent,
   TaskItem,
   Transaction,
-  Habit,
-  Goal,
   Course,
   StudyReading,
   ReadingStatus,
@@ -38,6 +36,13 @@ function createId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function normalizeTasks(tasks: TaskItem[] | undefined): TaskItem[] {
+  if (!Array.isArray(tasks)) return [];
+  return tasks.map((t) =>
+    (t.category as string) === 'Estágio' ? { ...t, category: 'Monitoria' } : t
+  );
+}
+
 function loadLocalData(): AppData {
   try {
     const raw = localStorage.getItem(LOCAL_DATA_KEY);
@@ -47,6 +52,7 @@ function loadLocalData(): AppData {
     return {
       ...defaults,
       ...parsed,
+      tasks: normalizeTasks(parsed.tasks),
       settings: { ...defaults.settings, ...(parsed.settings ?? {}) },
     };
   } catch {
@@ -147,6 +153,7 @@ export function useAppData() {
           const merged: AppData = {
             ...defaults,
             ...remoteData,
+            tasks: normalizeTasks(remoteData.tasks),
             settings: { ...defaults.settings, ...(remoteData.settings ?? {}) },
           };
           dataRef.current = merged;
@@ -332,75 +339,6 @@ export function useAppData() {
     [commitUpdate]
   );
 
-  const addHabit = useCallback(
-    (habit: Omit<Habit, 'id' | 'completedDates'>) => {
-      commitUpdate((prev) => ({
-        ...prev,
-        habits: [...prev.habits, { ...habit, id: createId('h'), completedDates: [] }],
-      }));
-    },
-    [commitUpdate]
-  );
-
-  const toggleHabitDate = useCallback(
-    (habitId: string, dateISO: string) => {
-      commitUpdate((prev) => ({
-        ...prev,
-        habits: prev.habits.map((h) => {
-          if (h.id !== habitId) return h;
-          const exists = h.completedDates.includes(dateISO);
-          return {
-            ...h,
-            completedDates: exists
-              ? h.completedDates.filter((d) => d !== dateISO)
-              : [...h.completedDates, dateISO],
-          };
-        }),
-      }));
-    },
-    [commitUpdate]
-  );
-
-  const deleteHabit = useCallback(
-    (id: string) => {
-      commitUpdate((prev) => ({
-        ...prev,
-        habits: prev.habits.filter((h) => h.id !== id),
-      }));
-    },
-    [commitUpdate]
-  );
-
-  const addGoal = useCallback(
-    (goal: Omit<Goal, 'id'>) => {
-      commitUpdate((prev) => ({
-        ...prev,
-        goals: [...prev.goals, { ...goal, id: createId('g') }],
-      }));
-    },
-    [commitUpdate]
-  );
-
-  const updateGoalProgress = useCallback(
-    (id: string, progress: number) => {
-      commitUpdate((prev) => ({
-        ...prev,
-        goals: prev.goals.map((g) => (g.id === id ? { ...g, progress } : g)),
-      }));
-    },
-    [commitUpdate]
-  );
-
-  const deleteGoal = useCallback(
-    (id: string) => {
-      commitUpdate((prev) => ({
-        ...prev,
-        goals: prev.goals.filter((g) => g.id !== id),
-      }));
-    },
-    [commitUpdate]
-  );
-
   const addCourse = useCallback(
     (course: Omit<Course, 'id'>) => {
       commitUpdate((prev) => ({
@@ -486,12 +424,6 @@ export function useAppData() {
     addTransaction,
     updateTransaction,
     deleteTransaction,
-    addHabit,
-    toggleHabitDate,
-    deleteHabit,
-    addGoal,
-    updateGoalProgress,
-    deleteGoal,
     addCourse,
     updateCourse,
     deleteCourse,

@@ -22,7 +22,7 @@ interface TasksViewProps {
   onDelete: (id: string) => void;
 }
 
-const CATEGORIES: TaskCategory[] = ['Faculdade', 'Estágio', 'Pessoal'];
+const CATEGORIES: TaskCategory[] = ['Faculdade', 'Monitoria', 'Pessoal'];
 const PRIORITIES: { value: TaskPriority; label: string }[] = [
   { value: 'alta', label: 'Alta' },
   { value: 'media', label: 'Média' },
@@ -127,7 +127,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
           <p className="date-eyebrow">Produtividade</p>
           <h1 className="page-title">Tarefas & Lembretes</h1>
           <p className="page-subtitle">
-            Entregas da faculdade, relatórios de estágio, prazos e afazeres do dia.
+            Entregas da faculdade, atividades de monitoria, prazos e afazeres do dia.
           </p>
         </div>
 
