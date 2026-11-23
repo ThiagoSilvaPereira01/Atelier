@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Calendar,
   Plus,
@@ -6,8 +6,6 @@ import {
   MapPin,
   Clock,
   ExternalLink,
-  Download,
-  Upload,
   ChevronLeft,
   ChevronRight,
   CheckCircle2,
@@ -15,7 +13,6 @@ import {
   Bell,
   RefreshCw,
   Cloud,
-  CloudOff,
   Pencil,
   Check,
   X,
@@ -34,15 +31,9 @@ interface AgendaViewProps {
   googleConnected: boolean;
   googleSyncing: boolean;
   googleError: string | null;
-  googleMessage: string | null;
-  googleLastSyncAt?: string;
-  googleEmail?: string;
   googleAutoSync: boolean;
-  onToggleGoogleAutoSync: () => void;
   onConnectGoogle: () => Promise<void>;
-  onSyncGoogle: () => Promise<void>;
   onAutoSyncGoogle: () => Promise<void>;
-  onDisconnectGoogle: () => void;
 }
 
 const CATEGORIES: EventCategory[] = ['Faculdade', 'Estágio', 'Supervisão', 'Pessoal'];
@@ -90,18 +81,6 @@ function formatLongDate(iso: string): string {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-  }).format(dt);
-}
-
-function formatSyncTimestamp(iso?: string): string | null {
-  if (!iso) return null;
-  const dt = new Date(iso);
-  if (Number.isNaN(dt.getTime())) return null;
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
   }).format(dt);
 }
 
@@ -153,116 +132,6 @@ function toGoogleCalendarUrl(ev: AgendaEvent): string {
   if (ev.location) params.set('location', ev.location);
   if (ev.notes) params.set('details', ev.notes);
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
-}
-
-function buildIcsContent(events: AgendaEvent[]): string {
-  const lines = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Atelier//Psicologia & Rotina//PT',
-  ];
-  for (const ev of events) {
-    const { start, end, allDay } = computeStartEndCompact(ev);
-    lines.push('BEGIN:VEVENT');
-    lines.push(`UID:${ev.googleEventId || ev.id}@atelier.app`);
-    if (allDay) {
-      lines.push(`DTSTART;VALUE=DATE:${start}`);
-      lines.push(`DTEND;VALUE=DATE:${end}`);
-    } else {
-      lines.push(`DTSTART:${start}`);
-      lines.push(`DTEND:${end}`);
-    }
-    lines.push(`SUMMARY:[${ev.category}] ${ev.title}`);
-    if (ev.location) lines.push(`LOCATION:${ev.location}`);
-    if (ev.notes) lines.push(`DESCRIPTION:${ev.notes}`);
-    lines.push('END:VEVENT');
-  }
-  lines.push('END:VCALENDAR');
-  return lines.join('\r\n');
-}
-
-function parseIcsDateTime(raw: string): { date: string; time: string; allDay: boolean } | null {
-  if (raw.length < 8) return null;
-  const y = Number(raw.slice(0, 4));
-  const m = Number(raw.slice(4, 6));
-  const d = Number(raw.slice(6, 8));
-  if (!y || !m || !d) return null;
-
-  const tMatch = raw.match(/T(\d{2})(\d{2})(\d{2})?(Z)?$/);
-  if (!tMatch) {
-    return { date: `${y}-${pad2(m)}-${pad2(d)}`, time: '00:00', allDay: true };
-  }
-
-  const hh = Number(tMatch[1]);
-  const mm = Number(tMatch[2]);
-  const isUtc = Boolean(tMatch[4]);
-
-  if (isUtc) {
-    const dt = new Date(Date.UTC(y, m - 1, d, hh, mm, 0));
-    return {
-      date: `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`,
-      time: `${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`,
-      allDay: false,
-    };
-  }
-
-  return {
-    date: `${y}-${pad2(m)}-${pad2(d)}`,
-    time: `${pad2(hh)}:${pad2(mm)}`,
-    allDay: false,
-  };
-}
-
-function parseIcsEvents(content: string): Omit<AgendaEvent, 'id'>[] {
-  const normalized = content.replace(/\r?\n[ \t]/g, '');
-  const blocks = normalized.split('BEGIN:VEVENT').slice(1);
-  const imported: Omit<AgendaEvent, 'id'>[] = [];
-
-  for (const block of blocks) {
-    const body = block.split('END:VEVENT')[0] || '';
-    const getField = (name: string): string => {
-      const regex = new RegExp(`^${name}(?:;[^:]*)?:(.*)$`, 'm');
-      const match = body.match(regex);
-      return match ? match[1].trim() : '';
-    };
-
-    const rawSummary = getField('SUMMARY');
-    const dtstart = getField('DTSTART');
-    const dtend = getField('DTEND');
-    if (!rawSummary || dtstart.length < 8) continue;
-
-    const parsedStart = parseIcsDateTime(dtstart);
-    if (!parsedStart) continue;
-    const parsedEnd = dtend ? parseIcsDateTime(dtend) : null;
-
-    let category: EventCategory = 'Pessoal';
-    let title = rawSummary;
-    const catMatch = rawSummary.match(/^\[(Faculdade|Estágio|Supervisão|Pessoal)\]\s*(.+)$/i);
-    if (catMatch) {
-      const found = CATEGORIES.find((c) => c.toLowerCase() === catMatch[1].toLowerCase());
-      if (found) {
-        category = found;
-        title = catMatch[2].trim() || rawSummary;
-      }
-    }
-
-    const location = getField('LOCATION') || undefined;
-    const notes = getField('DESCRIPTION') || undefined;
-
-    imported.push({
-      title,
-      date: parsedStart.date,
-      time: parsedStart.time,
-      endTime: !parsedStart.allDay && parsedEnd && !parsedEnd.allDay ? parsedEnd.time : undefined,
-      allDay: parsedStart.allDay || undefined,
-      category,
-      location,
-      notes,
-      source: 'atelier',
-    });
-  }
-
-  return imported;
 }
 
 function EventRow({
@@ -463,15 +332,9 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   googleConnected,
   googleSyncing,
   googleError,
-  googleMessage,
-  googleLastSyncAt,
-  googleEmail,
   googleAutoSync,
-  onToggleGoogleAutoSync,
   onConnectGoogle,
-  onSyncGoogle,
   onAutoSyncGoogle,
-  onDisconnectGoogle,
 }) => {
   const todayISO = getTodayISO();
   const [todayYear, todayMonth] = todayISO.split('-').map(Number);
@@ -488,8 +351,6 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   const [category, setCategory] = useState<EventCategory>('Faculdade');
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
-  const [importFeedback, setImportFeedback] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const monthLabel = useMemo(
     () =>
@@ -535,7 +396,6 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
   const selectedEvents = eventsByDate.get(selectedDate) ?? [];
   const selectedTasks = tasksByDate.get(selectedDate) ?? [];
-  const lastSyncLabel = formatSyncTimestamp(googleLastSyncAt);
 
   useEffect(() => {
     if (googleConnected && googleAutoSync) {
@@ -598,51 +458,6 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
     setNotes('');
   };
 
-  const handleExportIcs = () => {
-    const ics = buildIcsContent(events);
-    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'atelier-agenda.ics';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImportIcs = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const text = await file.text();
-    const parsed = parseIcsEvents(text);
-
-    const existingKeys = new Set(
-      events.map((ev) => `${ev.date}|${ev.time}|${ev.title.trim().toLowerCase()}`)
-    );
-    let addedCount = 0;
-    let skippedCount = 0;
-
-    for (const ev of parsed) {
-      const key = `${ev.date}|${ev.time}|${ev.title.trim().toLowerCase()}`;
-      if (existingKeys.has(key)) {
-        skippedCount += 1;
-        continue;
-      }
-      existingKeys.add(key);
-      onAdd(ev);
-      addedCount += 1;
-    }
-
-    setImportFeedback(
-      addedCount > 0
-        ? `${addedCount} evento(s) importado(s)${skippedCount > 0 ? ` (${skippedCount} duplicado(s) ignorado(s))` : ''}!`
-        : skippedCount > 0
-        ? `Todos os ${skippedCount} evento(s) do arquivo já estavam na agenda.`
-        : 'Nenhum evento válido encontrado no arquivo .ics.'
-    );
-    e.target.value = '';
-    window.setTimeout(() => setImportFeedback(null), 4500);
-  };
-
   const filtered = events
     .filter((ev) => filter === 'Todas' || ev.category === filter)
     .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`));
@@ -658,152 +473,35 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".ics,text/calendar"
-            style={{ display: 'none' }}
-            onChange={handleImportIcs}
-          />
+        {!googleConnected && (
           <button
-            className="btn btn-ghost"
-            onClick={() => fileInputRef.current?.click()}
-            title="Importar arquivo .ics exportado do Google Agenda"
+            type="button"
+            className="btn btn-primary"
+            onClick={onConnectGoogle}
+            disabled={googleSyncing}
           >
-            <Upload size={15} /> Importar .ics
+            <RefreshCw size={15} className={googleSyncing ? 'spin' : undefined} />
+            {googleSyncing ? 'Sincronizando...' : 'Sincronizar com Google'}
           </button>
-          <button
-            className="btn btn-ghost"
-            onClick={handleExportIcs}
-            disabled={events.length === 0}
-            title="Baixar arquivo .ics para importar no Google Agenda"
-          >
-            <Download size={15} /> Exportar .ics
-          </button>
-        </div>
+        )}
       </header>
 
-      {/* Sincronização com Google Agenda */}
-      <section className="card" style={{ marginBottom: '20px' }}>
+      {googleError && (
         <div
           style={{
+            marginBottom: '16px',
+            padding: '10px 12px',
+            borderRadius: '10px',
+            background: 'var(--danger-soft)',
+            color: 'var(--danger)',
+            fontSize: '0.82rem',
             display: 'flex',
-            justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '12px',
-            flexWrap: 'wrap',
+            gap: '8px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <Cloud size={18} style={{ color: 'var(--accent)' }} />
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.94rem' }}>
-                  Sincronização com Google Agenda
-                </span>
-                <span className={`pill ${googleConnected ? 'pill-success' : 'pill-neutral'}`}>
-                  {googleConnected ? 'Conectado' : 'Desconectado'}
-                </span>
-                {googleConnected && googleAutoSync && (
-                  <span className="pill pill-accent" title="Atualiza automaticamente ao abrir a Agenda, ao voltar para a aba e a cada 2 minutos">
-                    Automática
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                {googleConnected
-                  ? `Agenda principal${googleEmail ? ` (${googleEmail})` : ''}${
-                      googleAutoSync ? ' · Sync automática (2 min)' : ' · Sync manual'
-                    }${lastSyncLabel ? ` · Última sincronização: ${lastSyncLabel}` : ''}`
-                  : lastSyncLabel
-                  ? `Última sincronização: ${lastSyncLabel} · Reconecte para sincronizar automaticamente.`
-                  : 'Conecte sua conta Google para sincronizar sua agenda principal nos dois sentidos.'}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {googleConnected ? (
-              <>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={onSyncGoogle}
-                  disabled={googleSyncing}
-                >
-                  <RefreshCw size={15} className={googleSyncing ? 'spin' : undefined} />
-                  {googleSyncing ? 'Sincronizando...' : 'Sincronizar agora'}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={onToggleGoogleAutoSync}
-                  aria-pressed={googleAutoSync}
-                  title="Ativar ou pausar a sincronização automática com o Google Agenda"
-                >
-                  {googleAutoSync ? <CheckCircle2 size={15} /> : <Circle size={15} />}
-                  {googleAutoSync ? 'Auto: ligada' : 'Auto: pausada'}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={onDisconnectGoogle}
-                  disabled={googleSyncing}
-                  title="Encerrar sessão do Google Agenda"
-                >
-                  <CloudOff size={15} /> Desconectar
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={onConnectGoogle}
-                disabled={googleSyncing}
-              >
-                <RefreshCw size={15} className={googleSyncing ? 'spin' : undefined} />
-                {googleSyncing ? 'Conectando...' : 'Conectar Google Agenda'}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {googleMessage && (
-          <div
-            className="pill pill-success"
-            style={{ marginTop: '12px', padding: '7px 12px', borderRadius: '10px' }}
-          >
-            {googleMessage}
-          </div>
-        )}
-
-        {googleError && (
-          <div
-            style={{
-              marginTop: '12px',
-              padding: '10px 12px',
-              borderRadius: '10px',
-              background: 'var(--danger-soft)',
-              color: 'var(--danger)',
-              fontSize: '0.82rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
-          >
-            <AlertCircle size={15} style={{ flexShrink: 0 }} />
-            <span>{googleError}</span>
-          </div>
-        )}
-      </section>
-
-      {importFeedback && (
-        <div
-          className="pill pill-accent"
-          style={{ marginBottom: '14px', padding: '8px 14px', borderRadius: '10px' }}
-        >
-          {importFeedback}
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
+          <span>{googleError}</span>
         </div>
       )}
 

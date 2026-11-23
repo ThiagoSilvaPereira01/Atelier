@@ -3,6 +3,10 @@ import type { Auth, User } from 'firebase/auth';
 import {
   Palette,
   Cloud,
+  CloudOff,
+  Calendar,
+  RefreshCw,
+  Circle,
   LogOut,
   RotateCcw,
   Sparkles,
@@ -30,6 +34,29 @@ interface SettingsViewProps {
   onConnectFirebase: (config: FirebaseConfig) => Promise<void>;
   onDisconnectFirebase: () => Promise<void>;
   onResetDemo: () => void;
+  googleConnected: boolean;
+  googleSyncing: boolean;
+  googleError: string | null;
+  googleMessage: string | null;
+  googleLastSyncAt?: string;
+  googleEmail?: string;
+  googleAutoSync: boolean;
+  onToggleGoogleAutoSync: () => void;
+  onConnectGoogle: () => Promise<void>;
+  onSyncGoogle: () => Promise<void>;
+  onDisconnectGoogle: () => void;
+}
+
+function formatSyncTimestamp(iso?: string): string | null {
+  if (!iso) return null;
+  const dt = new Date(iso);
+  if (Number.isNaN(dt.getTime())) return null;
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(dt);
 }
 
 const BRAND_SUGGESTIONS = [
@@ -62,7 +89,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onConnectFirebase,
   onDisconnectFirebase,
   onResetDemo,
+  googleConnected,
+  googleSyncing,
+  googleError,
+  googleMessage,
+  googleLastSyncAt,
+  googleEmail,
+  googleAutoSync,
+  onToggleGoogleAutoSync,
+  onConnectGoogle,
+  onSyncGoogle,
+  onDisconnectGoogle,
 }) => {
+  const googleLastSyncLabel = formatSyncTimestamp(googleLastSyncAt);
   const [apiKey, setApiKey] = useState(firebaseConfig?.apiKey ?? '');
   const [authDomain, setAuthDomain] = useState(firebaseConfig?.authDomain ?? '');
   const [projectId, setProjectId] = useState(firebaseConfig?.projectId ?? '');
@@ -357,6 +396,107 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </>
             );
           })()}
+        </section>
+
+        {/* Google Agenda */}
+        <section className="card span-2">
+          <div className="card-header">
+            <h2 className="card-title">
+              <Calendar size={18} style={{ color: 'var(--accent)' }} />
+              Sincronização com Google Agenda
+            </h2>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+              <span className={`pill ${googleConnected ? 'pill-success' : 'pill-neutral'}`}>
+                {googleConnected ? 'Conectado' : 'Desconectado'}
+              </span>
+              {googleConnected && googleAutoSync && (
+                <span className="pill pill-accent">Automática</span>
+              )}
+            </div>
+          </div>
+
+          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+            {googleConnected
+              ? `Agenda principal${googleEmail ? ` (${googleEmail})` : ''}${
+                  googleAutoSync ? ' · Sync automática a cada 2 min' : ' · Sync manual'
+                }${googleLastSyncLabel ? ` · Última sincronização: ${googleLastSyncLabel}` : ''}`
+              : googleLastSyncLabel
+              ? `Última sincronização: ${googleLastSyncLabel} · Reconecte para manter sua agenda sincronizada nos dois sentidos.`
+              : 'Conecte sua conta Google para sincronizar sua agenda principal nos dois sentidos.'}
+          </p>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {googleConnected ? (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={onSyncGoogle}
+                  disabled={googleSyncing}
+                >
+                  <RefreshCw size={15} className={googleSyncing ? 'spin' : undefined} />
+                  {googleSyncing ? 'Sincronizando...' : 'Sincronizar agora'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={onToggleGoogleAutoSync}
+                  aria-pressed={googleAutoSync}
+                  title="Ativar ou pausar a sincronização automática com o Google Agenda"
+                >
+                  {googleAutoSync ? <CheckCircle2 size={15} /> : <Circle size={15} />}
+                  {googleAutoSync ? 'Auto: ligada' : 'Auto: pausada'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={onDisconnectGoogle}
+                  disabled={googleSyncing}
+                  title="Encerrar sessão do Google Agenda"
+                >
+                  <CloudOff size={15} /> Desconectar
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={onConnectGoogle}
+                disabled={googleSyncing}
+              >
+                <RefreshCw size={15} className={googleSyncing ? 'spin' : undefined} />
+                {googleSyncing ? 'Sincronizando...' : 'Sincronizar com Google'}
+              </button>
+            )}
+          </div>
+
+          {googleMessage && (
+            <div
+              className="pill pill-success"
+              style={{ marginTop: '12px', padding: '7px 12px', borderRadius: '10px' }}
+            >
+              {googleMessage}
+            </div>
+          )}
+
+          {googleError && (
+            <div
+              style={{
+                marginTop: '12px',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                background: 'var(--danger-soft)',
+                color: 'var(--danger)',
+                fontSize: '0.82rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <AlertCircle size={15} style={{ flexShrink: 0 }} />
+              <span>{googleError}</span>
+            </div>
+          )}
         </section>
 
         {/* Firebase */}

@@ -275,17 +275,9 @@ export function App() {
               googleConnected={store.googleCalendarConnected}
               googleSyncing={store.googleCalendarSyncing}
               googleError={store.googleCalendarError}
-              googleMessage={store.googleCalendarMessage}
-              googleLastSyncAt={store.googleCalendarLastSyncAt}
-              googleEmail={data.settings.googleCalendarEmail}
               googleAutoSync={store.googleCalendarAutoSync}
-              onToggleGoogleAutoSync={() =>
-                store.updateSettings({ googleCalendarAutoSync: !store.googleCalendarAutoSync })
-              }
               onConnectGoogle={store.connectAndSyncGoogleCalendar}
-              onSyncGoogle={store.syncGoogleCalendarNow}
               onAutoSyncGoogle={store.syncGoogleCalendarSilent}
-              onDisconnectGoogle={store.disconnectGoogleCalendar}
             />
           )}
 
@@ -357,6 +349,19 @@ export function App() {
               onConnectFirebase={store.connectFirebase}
               onDisconnectFirebase={store.disconnectFirebase}
               onResetDemo={store.resetToDemo}
+              googleConnected={store.googleCalendarConnected}
+              googleSyncing={store.googleCalendarSyncing}
+              googleError={store.googleCalendarError}
+              googleMessage={store.googleCalendarMessage}
+              googleLastSyncAt={store.googleCalendarLastSyncAt}
+              googleEmail={data.settings.googleCalendarEmail}
+              googleAutoSync={store.googleCalendarAutoSync}
+              onToggleGoogleAutoSync={() =>
+                store.updateSettings({ googleCalendarAutoSync: !store.googleCalendarAutoSync })
+              }
+              onConnectGoogle={store.connectAndSyncGoogleCalendar}
+              onSyncGoogle={store.syncGoogleCalendarNow}
+              onDisconnectGoogle={store.disconnectGoogleCalendar}
             />
           )}
         </main>
