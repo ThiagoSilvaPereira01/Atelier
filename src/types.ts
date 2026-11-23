@@ -93,6 +93,7 @@ export interface AppSettings {
   profileFocus?: string;
   googleCalendarLastSyncAt?: string;
   googleCalendarEmail?: string;
+  googleCalendarAutoSync?: boolean;
 }
 
 export interface AppData {

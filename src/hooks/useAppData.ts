@@ -39,6 +39,8 @@ import {
 } from '../lib/googleCalendar';
 
 const LOCAL_DATA_KEY = 'raquel_psi_app_data_v1';
+const GOOGLE_AUTO_SYNC_INTERVAL_MS = 2 * 60_000;
+const GOOGLE_AUTO_SYNC_COOLDOWN_MS = 30_000;
 
 function createId(prefix: string): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -86,7 +88,12 @@ export function useAppData() {
   const [googleCalendarSyncing, setGoogleCalendarSyncing] = useState<boolean>(false);
   const [googleCalendarError, setGoogleCalendarError] = useState<string | null>(null);
   const [googleCalendarMessage, setGoogleCalendarMessage] = useState<string | null>(null);
+  const [googleLastCheckedAt, setGoogleLastCheckedAt] = useState<string | undefined>(undefined);
+  const [firestoreReadyUid, setFirestoreReadyUid] = useState<string | null>(null);
   const dataRef = useRef(data);
+  const googleSyncInFlightRef = useRef(false);
+  const lastGoogleSyncAttemptRef = useRef(0);
+  const pendingGoogleMutationCountRef = useRef(0);
 
   useEffect(() => {
     dataRef.current = data;
@@ -141,10 +148,12 @@ export function useAppData() {
         setAuthLoading(false);
         if (!firebaseUser) {
           setSyncStatus('local');
+          setFirestoreReadyUid(null);
           clearGoogleCalendarSession();
           setGoogleCalendarConnected(false);
           setGoogleCalendarError(null);
           setGoogleCalendarMessage(null);
+          setGoogleLastCheckedAt(undefined);
           const clean = createInitialData();
           dataRef.current = clean;
           setData(clean);
@@ -164,10 +173,10 @@ export function useAppData() {
   useEffect(() => {
     if (!db || !user) return;
 
-    setSyncStatus('syncing');
+    const activeUid = user.uid;
     const unsubDoc = subscribeUserData(
       db,
-      user.uid,
+      activeUid,
       (remoteData) => {
         if (remoteData) {
           const defaults = createInitialData();
@@ -181,6 +190,7 @@ export function useAppData() {
           setData(merged);
           setSyncStatus('synced');
           setSyncError(null);
+          setFirestoreReadyUid(activeUid);
         } else {
           // First time user logs in: create a clean workspace for this user
           const pendingName = consumePendingRegistrationName();
@@ -192,7 +202,8 @@ export function useAppData() {
           const cleanUserData = createInitialData(firstName);
           dataRef.current = cleanUserData;
           setData(cleanUserData);
-          saveUserData(db, user.uid, cleanUserData)
+          setFirestoreReadyUid(activeUid);
+          saveUserData(db, activeUid, cleanUserData)
             .then(() => {
               setSyncStatus('synced');
               setSyncError(null);
@@ -269,43 +280,68 @@ export function useAppData() {
   }, []);
 
   const runGoogleSync = useCallback(
-    async (accessToken: string, email?: string) => {
+    async (accessToken: string, email?: string, options?: { silent?: boolean }) => {
+      if (googleSyncInFlightRef.current) return;
+      const silent = Boolean(options?.silent);
+      googleSyncInFlightRef.current = true;
+      lastGoogleSyncAttemptRef.current = Date.now();
       setGoogleCalendarSyncing(true);
-      setGoogleCalendarError(null);
-      setGoogleCalendarMessage(null);
+      if (!silent) {
+        setGoogleCalendarError(null);
+        setGoogleCalendarMessage(null);
+      }
       try {
         const result = await syncWithGoogleCalendar(accessToken, dataRef.current.events, () =>
           createId('ev')
         );
         const nowISO = new Date().toISOString();
-        commitUpdate((prev) => ({
-          ...prev,
-          events: result.events,
-          settings: {
-            ...prev.settings,
-            googleCalendarLastSyncAt: nowISO,
-            ...(email ? { googleCalendarEmail: email } : {}),
-          },
-        }));
+        const hasChanges =
+          result.pulledCount > 0 ||
+          result.pushedCount > 0 ||
+          result.updatedCount > 0 ||
+          result.removedCount > 0;
+
+        setGoogleLastCheckedAt(nowISO);
         setGoogleCalendarConnected(true);
+        setGoogleCalendarError(null);
+
+        if (!silent || hasChanges) {
+          commitUpdate((prev) => ({
+            ...prev,
+            events: result.events,
+            settings: {
+              ...prev.settings,
+              googleCalendarLastSyncAt: nowISO,
+              ...(email ? { googleCalendarEmail: email } : {}),
+            },
+          }));
+        }
 
         const parts: string[] = [];
         if (result.pulledCount > 0) parts.push(`${result.pulledCount} importado(s)`);
         if (result.pushedCount > 0) parts.push(`${result.pushedCount} enviado(s)`);
         if (result.updatedCount > 0) parts.push(`${result.updatedCount} atualizado(s)`);
         if (result.removedCount > 0) parts.push(`${result.removedCount} removido(s)`);
-        setGoogleCalendarMessage(
-          parts.length > 0
-            ? `Google Agenda sincronizado: ${parts.join(', ')}.`
-            : 'Google Agenda já está em dia!'
-        );
+
+        if (!silent) {
+          setGoogleCalendarMessage(
+            parts.length > 0
+              ? `Google Agenda sincronizado: ${parts.join(', ')}.`
+              : 'Google Agenda já está em dia!'
+          );
+        } else if (hasChanges) {
+          setGoogleCalendarMessage(`Sincronização automática: ${parts.join(', ')}.`);
+        }
       } catch (err) {
         if (err instanceof GoogleCalendarApiError && err.status === 401) {
           clearGoogleCalendarSession();
           setGoogleCalendarConnected(false);
+          setGoogleCalendarError(translateGoogleCalendarError(err));
+        } else if (!silent || (typeof navigator !== 'undefined' && navigator.onLine && !(err instanceof TypeError))) {
+          setGoogleCalendarError(translateGoogleCalendarError(err));
         }
-        setGoogleCalendarError(translateGoogleCalendarError(err));
       } finally {
+        googleSyncInFlightRef.current = false;
         setGoogleCalendarSyncing(false);
       }
     },
@@ -335,6 +371,73 @@ export function useAppData() {
     await runGoogleSync(session.accessToken, session.email);
   }, [connectAndSyncGoogleCalendar, runGoogleSync]);
 
+  const syncGoogleCalendarSilent = useCallback(
+    async (force = false) => {
+      const autoSyncEnabled = dataRef.current.settings.googleCalendarAutoSync ?? true;
+      if (!autoSyncEnabled) return;
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      if (googleSyncInFlightRef.current || pendingGoogleMutationCountRef.current > 0) return;
+
+      const session = getStoredGoogleCalendarSession();
+      if (!session) {
+        setGoogleCalendarConnected(false);
+        return;
+      }
+
+      if (!force && Date.now() - lastGoogleSyncAttemptRef.current < GOOGLE_AUTO_SYNC_COOLDOWN_MS) {
+        return;
+      }
+
+      await runGoogleSync(session.accessToken, session.email, { silent: true });
+    },
+    [runGoogleSync]
+  );
+
+  const googleCalendarAutoSync = data.settings.googleCalendarAutoSync ?? true;
+  const isWorkspaceDataReady = !firebaseConfig || (user !== null && firestoreReadyUid === user.uid);
+
+  // Automatic background synchronization with Google Calendar while connected
+  useEffect(() => {
+    if (!googleCalendarConnected || !googleCalendarAutoSync || !isWorkspaceDataReady) return;
+
+    const initialTimerId = window.setTimeout(() => {
+      void syncGoogleCalendarSilent();
+    }, 0);
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        void syncGoogleCalendarSilent();
+      }
+    }, GOOGLE_AUTO_SYNC_INTERVAL_MS);
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        void syncGoogleCalendarSilent();
+      }
+    };
+
+    const handleOnline = () => {
+      void syncGoogleCalendarSilent();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      window.clearTimeout(initialTimerId);
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [
+    googleCalendarConnected,
+    googleCalendarAutoSync,
+    isWorkspaceDataReady,
+    syncGoogleCalendarSilent,
+  ]);
+
   const disconnectGoogleCalendar = useCallback(() => {
     clearGoogleCalendarSession();
     setGoogleCalendarConnected(false);
@@ -356,6 +459,7 @@ export function useAppData() {
 
       const session = getStoredGoogleCalendarSession();
       if (session && !newEvent.googleEventId) {
+        pendingGoogleMutationCountRef.current += 1;
         createGoogleEvent(session.accessToken, newEvent)
           .then((created) => {
             commitUpdate((prev) => ({
@@ -372,7 +476,13 @@ export function useAppData() {
               ),
             }));
           })
-          .catch(handleGoogleBackgroundError);
+          .catch(handleGoogleBackgroundError)
+          .finally(() => {
+            pendingGoogleMutationCountRef.current = Math.max(
+              0,
+              pendingGoogleMutationCountRef.current - 1
+            );
+          });
       }
     },
     [commitUpdate, handleGoogleBackgroundError]
@@ -388,9 +498,15 @@ export function useAppData() {
 
       const session = getStoredGoogleCalendarSession();
       if (session && target?.googleEventId) {
-        deleteGoogleEvent(session.accessToken, target.googleEventId).catch(
-          handleGoogleBackgroundError
-        );
+        pendingGoogleMutationCountRef.current += 1;
+        deleteGoogleEvent(session.accessToken, target.googleEventId)
+          .catch(handleGoogleBackgroundError)
+          .finally(() => {
+            pendingGoogleMutationCountRef.current = Math.max(
+              0,
+              pendingGoogleMutationCountRef.current - 1
+            );
+          });
       }
     },
     [commitUpdate, handleGoogleBackgroundError]
@@ -412,6 +528,7 @@ export function useAppData() {
       if (session && updatedEvent) {
         const ev = updatedEvent as AgendaEvent;
         if (ev.googleEventId) {
+          pendingGoogleMutationCountRef.current += 1;
           updateGoogleEvent(session.accessToken, ev.googleEventId, ev)
             .then((res) => {
               commitUpdate((prev) => ({
@@ -427,7 +544,13 @@ export function useAppData() {
                 ),
               }));
             })
-            .catch(handleGoogleBackgroundError);
+            .catch(handleGoogleBackgroundError)
+            .finally(() => {
+              pendingGoogleMutationCountRef.current = Math.max(
+                0,
+                pendingGoogleMutationCountRef.current - 1
+              );
+            });
         }
       }
     },
@@ -580,8 +703,11 @@ export function useAppData() {
     googleCalendarSyncing,
     googleCalendarError,
     googleCalendarMessage,
+    googleCalendarAutoSync,
+    googleCalendarLastSyncAt: googleLastCheckedAt ?? data.settings.googleCalendarLastSyncAt,
     connectAndSyncGoogleCalendar,
     syncGoogleCalendarNow,
+    syncGoogleCalendarSilent,
     disconnectGoogleCalendar,
     connectFirebase,
     disconnectFirebase,

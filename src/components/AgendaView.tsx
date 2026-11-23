@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import {
   Calendar,
   Plus,
@@ -37,8 +37,11 @@ interface AgendaViewProps {
   googleMessage: string | null;
   googleLastSyncAt?: string;
   googleEmail?: string;
+  googleAutoSync: boolean;
+  onToggleGoogleAutoSync: () => void;
   onConnectGoogle: () => Promise<void>;
   onSyncGoogle: () => Promise<void>;
+  onAutoSyncGoogle: () => Promise<void>;
   onDisconnectGoogle: () => void;
 }
 
@@ -463,8 +466,11 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   googleMessage,
   googleLastSyncAt,
   googleEmail,
+  googleAutoSync,
+  onToggleGoogleAutoSync,
   onConnectGoogle,
   onSyncGoogle,
+  onAutoSyncGoogle,
   onDisconnectGoogle,
 }) => {
   const todayISO = getTodayISO();
@@ -530,6 +536,12 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
   const selectedEvents = eventsByDate.get(selectedDate) ?? [];
   const selectedTasks = tasksByDate.get(selectedDate) ?? [];
   const lastSyncLabel = formatSyncTimestamp(googleLastSyncAt);
+
+  useEffect(() => {
+    if (googleConnected && googleAutoSync) {
+      void onAutoSyncGoogle();
+    }
+  }, [googleConnected, googleAutoSync, onAutoSyncGoogle]);
 
   const handleSelectDay = (cell: CalendarCell) => {
     setSelectedDate(cell.iso);
@@ -693,12 +705,17 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                 <span className={`pill ${googleConnected ? 'pill-success' : 'pill-neutral'}`}>
                   {googleConnected ? 'Conectado' : 'Desconectado'}
                 </span>
+                {googleConnected && googleAutoSync && (
+                  <span className="pill pill-accent" title="Atualiza automaticamente ao abrir a Agenda, ao voltar para a aba e a cada 2 minutos">
+                    Automática
+                  </span>
+                )}
               </div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                 {googleConnected
                   ? `Agenda principal${googleEmail ? ` (${googleEmail})` : ''}${
-                      lastSyncLabel ? ` · Última sincronização: ${lastSyncLabel}` : ''
-                    }`
+                      googleAutoSync ? ' · Sync automática (2 min)' : ' · Sync manual'
+                    }${lastSyncLabel ? ` · Última sincronização: ${lastSyncLabel}` : ''}`
                   : lastSyncLabel
                   ? `Última sincronização: ${lastSyncLabel} · Reconecte para sincronizar automaticamente.`
                   : 'Conecte sua conta Google para sincronizar sua agenda principal nos dois sentidos.'}
@@ -717,6 +734,16 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                 >
                   <RefreshCw size={15} className={googleSyncing ? 'spin' : undefined} />
                   {googleSyncing ? 'Sincronizando...' : 'Sincronizar agora'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={onToggleGoogleAutoSync}
+                  aria-pressed={googleAutoSync}
+                  title="Ativar ou pausar a sincronização automática com o Google Agenda"
+                >
+                  {googleAutoSync ? <CheckCircle2 size={15} /> : <Circle size={15} />}
+                  {googleAutoSync ? 'Auto: ligada' : 'Auto: pausada'}
                 </button>
                 <button
                   type="button"

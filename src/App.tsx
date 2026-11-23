@@ -276,10 +276,15 @@ export function App() {
               googleSyncing={store.googleCalendarSyncing}
               googleError={store.googleCalendarError}
               googleMessage={store.googleCalendarMessage}
-              googleLastSyncAt={data.settings.googleCalendarLastSyncAt}
+              googleLastSyncAt={store.googleCalendarLastSyncAt}
               googleEmail={data.settings.googleCalendarEmail}
+              googleAutoSync={store.googleCalendarAutoSync}
+              onToggleGoogleAutoSync={() =>
+                store.updateSettings({ googleCalendarAutoSync: !store.googleCalendarAutoSync })
+              }
               onConnectGoogle={store.connectAndSyncGoogleCalendar}
               onSyncGoogle={store.syncGoogleCalendarNow}
+              onAutoSyncGoogle={store.syncGoogleCalendarSilent}
               onDisconnectGoogle={store.disconnectGoogleCalendar}
             />
           )}

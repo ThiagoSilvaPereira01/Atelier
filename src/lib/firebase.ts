@@ -227,6 +227,7 @@ export async function loginWithGoogle(auth: Auth) {
 
 export async function logoutFirebase(auth: Auth) {
   try {
+    localStorage.removeItem('atelier_google_calendar_session_v1');
     sessionStorage.removeItem('atelier_google_calendar_session_v1');
   } catch {
     // Ignore storage errors

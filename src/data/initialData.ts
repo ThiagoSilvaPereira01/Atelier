@@ -32,6 +32,7 @@ export function createInitialData(userName = 'Raquel'): AppData {
       profileInstitution: '',
       profileBio: '',
       profileFocus: '',
+      googleCalendarAutoSync: true,
     },
     events: [],
     tasks: [],

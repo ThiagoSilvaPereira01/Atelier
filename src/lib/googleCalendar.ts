@@ -45,11 +45,13 @@ export class GoogleCalendarApiError extends Error {
 
 export function getStoredGoogleCalendarSession(): GoogleCalendarSession | null {
   try {
-    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
+    const raw =
+      localStorage.getItem(SESSION_STORAGE_KEY) ?? sessionStorage.getItem(SESSION_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<GoogleCalendarSession>;
     if (!parsed.accessToken || typeof parsed.expiresAt !== 'number') return null;
     if (Date.now() >= parsed.expiresAt) {
+      localStorage.removeItem(SESSION_STORAGE_KEY);
       sessionStorage.removeItem(SESSION_STORAGE_KEY);
       return null;
     }
@@ -64,14 +66,25 @@ export function getStoredGoogleCalendarSession(): GoogleCalendarSession | null {
 }
 
 export function saveGoogleCalendarSession(session: GoogleCalendarSession): void {
+  const serialized = JSON.stringify(session);
   try {
-    sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
+    localStorage.setItem(SESSION_STORAGE_KEY, serialized);
+  } catch {
+    // Ignore storage quota errors
+  }
+  try {
+    sessionStorage.setItem(SESSION_STORAGE_KEY, serialized);
   } catch {
     // Ignore storage quota errors
   }
 }
 
 export function clearGoogleCalendarSession(): void {
+  try {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+  } catch {
+    // Ignore storage errors
+  }
   try {
     sessionStorage.removeItem(SESSION_STORAGE_KEY);
   } catch {
