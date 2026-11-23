@@ -14,6 +14,8 @@ import {
   AlertCircle,
   Star,
   Download,
+  Upload,
+  ShieldCheck,
 } from 'lucide-react';
 import type { AppSettings, FirebaseConfig, TabId, ThemeMode } from '../types';
 import {
@@ -41,6 +43,8 @@ interface SettingsViewProps {
   onConnectFirebase: (config: FirebaseConfig) => Promise<void>;
   onDisconnectFirebase: () => Promise<void>;
   onResetDemo: () => void;
+  onExportBackup: () => string;
+  onImportBackup: (rawJson: string) => { ok: boolean; error?: string };
   googleConnected: boolean;
   googleSyncing: boolean;
   googleError: string | null;
@@ -102,6 +106,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onConnectFirebase,
   onDisconnectFirebase,
   onResetDemo,
+  onExportBackup,
+  onImportBackup,
   googleConnected,
   googleSyncing,
   googleError,
@@ -139,7 +145,50 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     brandSubtitle?: string;
   }>({});
   const [confirmReset, setConfirmReset] = useState(false);
+  const [backupMessage, setBackupMessage] = useState<string | null>(null);
+  const [backupError, setBackupError] = useState<string | null>(null);
+  const backupInputRef = useRef<HTMLInputElement | null>(null);
   const identityTimerRef = useRef<number | null>(null);
+
+  const handleDownloadBackup = () => {
+    setBackupError(null);
+    setBackupMessage(null);
+    try {
+      const json = onExportBackup();
+      const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const today = new Date().toISOString().slice(0, 10);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `atelier-backup-${today}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setBackupMessage('Backup baixado com sucesso!');
+    } catch {
+      setBackupError('Não foi possível gerar o arquivo de backup.');
+    }
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setBackupError(null);
+    setBackupMessage(null);
+    try {
+      const text = await file.text();
+      const res = onImportBackup(text);
+      if (res.ok) {
+        setBackupMessage('Backup restaurado com sucesso! Seus dados foram sincronizados.');
+      } else {
+        setBackupError(res.error || 'Arquivo de backup inválido.');
+      }
+    } catch {
+      setBackupError('Erro ao ler o arquivo selecionado.');
+    }
+  };
 
   const userNameValue = draftIdentity.userName ?? settings.userName;
   const brandNameValue = draftIdentity.brandName ?? settings.brandName;
@@ -787,6 +836,59 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               Abrir página /baixar
             </a>
           </div>
+        </section>
+
+        {/* Backup & Restauração */}
+        <section className="card span-2">
+          <div className="card-header">
+            <h2 className="card-title">
+              <ShieldCheck size={18} style={{ color: 'var(--accent)' }} />
+              Backup & Restauração
+            </h2>
+          </div>
+          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+            Salve uma cópia de segurança em arquivo JSON com sua agenda, tarefas, finanças,
+            disciplinas e leituras, ou restaure um backup anterior.
+          </p>
+
+          <input
+            ref={backupInputRef}
+            type="file"
+            accept="application/json,.json"
+            style={{ display: 'none' }}
+            onChange={(e) => void handleImportFile(e)}
+          />
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-primary" onClick={handleDownloadBackup}>
+              <Download size={15} /> Exportar backup (.json)
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => backupInputRef.current?.click()}
+            >
+              <Upload size={15} /> Restaurar backup
+            </button>
+          </div>
+
+          {backupMessage && (
+            <div
+              className="pill pill-success"
+              style={{ marginTop: '12px', padding: '7px 12px', borderRadius: '10px' }}
+            >
+              <CheckCircle2 size={15} /> {backupMessage}
+            </div>
+          )}
+
+          {backupError && (
+            <div
+              className="pill pill-danger"
+              style={{ marginTop: '12px', padding: '7px 12px', borderRadius: '10px' }}
+            >
+              <AlertCircle size={15} /> {backupError}
+            </div>
+          )}
         </section>
 
         {/* Limpar dados */}

@@ -15,7 +15,20 @@ const MIME_TYPES = {
 };
 
 let server = null;
+let mainWindow = null;
 const PREFERRED_PORT = 45917;
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
 
 function createStaticHandler(distDir) {
   const resolvedRoot = path.resolve(distDir);
@@ -80,6 +93,12 @@ async function createWindow() {
       nodeIntegration: false,
     },
   });
+  mainWindow = win;
+  win.on('closed', () => {
+    if (mainWindow === win) {
+      mainWindow = null;
+    }
+  });
 
   // Allow Firebase Google Auth popups, open external Calendar / update links in default browser
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -98,7 +117,9 @@ async function createWindow() {
   await win.loadURL(`http://localhost:${started.port}/`);
 }
 
-app.whenReady().then(createWindow);
+if (gotTheLock) {
+  app.whenReady().then(createWindow);
+}
 
 app.on('window-all-closed', () => {
   if (server) {
