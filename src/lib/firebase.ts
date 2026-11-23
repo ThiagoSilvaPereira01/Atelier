@@ -250,20 +250,29 @@ export function subscribeAuth(auth: Auth, callback: (user: User | null) => void)
   return onAuthStateChanged(auth, callback);
 }
 
+export interface UserDataSnapshotMeta {
+  fromCache: boolean;
+  hasPendingWrites: boolean;
+}
+
 export function subscribeUserData(
   db: Firestore,
   uid: string,
-  onData: (data: AppData | null) => void,
+  onData: (data: AppData | null, meta: UserDataSnapshotMeta) => void,
   onError: (error: Error) => void
 ) {
   const ref = doc(db, 'users', uid, 'app', 'state');
   return onSnapshot(
     ref,
     (snap) => {
+      const meta: UserDataSnapshotMeta = {
+        fromCache: snap.metadata.fromCache,
+        hasPendingWrites: snap.metadata.hasPendingWrites,
+      };
       if (snap.exists()) {
-        onData(snap.data() as AppData);
+        onData(snap.data() as AppData, meta);
       } else {
-        onData(null);
+        onData(null, meta);
       }
     },
     (err) => onError(err)
@@ -279,4 +288,22 @@ export async function loadUserDataOnce(db: Firestore, uid: string): Promise<AppD
 export async function saveUserData(db: Firestore, uid: string, data: AppData): Promise<void> {
   const ref = doc(db, 'users', uid, 'app', 'state');
   await setDoc(ref, stripUndefined(data), { merge: true });
+}
+
+export type AppDataPatch = Partial<Omit<AppData, 'settings'>> & {
+  settings?: Partial<AppData['settings']>;
+};
+
+/**
+ * Persists only the modified top-level fields (and deep-merges `settings` keys)
+ * so updating one section (e.g. theme or Google Calendar events) can never
+ * overwrite unrelated collections like tasks, transactions, courses, or readings.
+ */
+export async function saveUserDataPatch(
+  db: Firestore,
+  uid: string,
+  patch: AppDataPatch
+): Promise<void> {
+  const ref = doc(db, 'users', uid, 'app', 'state');
+  await setDoc(ref, stripUndefined(patch), { merge: true });
 }

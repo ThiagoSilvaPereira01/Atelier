@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   Download,
+  AlertCircle,
 } from 'lucide-react';
 import type { TabId, ThemeMode } from './types';
 import { useAppData } from './hooks/useAppData';
@@ -168,6 +169,24 @@ export function App() {
 
   if (store.firebaseConfig && !store.user) {
     return <LoginView auth={store.auth} />;
+  }
+
+  if (store.dataLoading) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'var(--bg-app)',
+          color: 'var(--text-secondary)',
+          fontSize: '0.95rem',
+        }}
+      >
+        Sincronizando seus dados...
+      </div>
+    );
   }
 
   const setTheme = (theme: ThemeMode) => {
@@ -371,6 +390,40 @@ export function App() {
         )}
 
         <main className="main-content">
+          {store.syncStatus === 'error' && store.syncError && (
+            <div
+              className="card"
+              style={{
+                marginBottom: '16px',
+                padding: '12px 14px',
+                borderColor: 'var(--danger)',
+                background: 'var(--danger-soft)',
+                color: 'var(--danger)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px',
+                flexWrap: 'wrap',
+                fontSize: '0.84rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 220px' }}>
+                <AlertCircle size={17} style={{ flexShrink: 0 }} />
+                <span>
+                  <strong>Erro ao sincronizar com o Firebase:</strong> {store.syncError}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ padding: '5px 10px', fontSize: '0.78rem', color: 'var(--danger)' }}
+                onClick={() => setActiveTab('ajustes')}
+              >
+                Ver Ajustes
+              </button>
+            </div>
+          )}
+
           {appPlatform !== 'web' && updateInfo?.hasUpdate && !updateBannerDismissed && (
             <div
               className="card"
@@ -522,6 +575,8 @@ export function App() {
               onConnectFirebase={store.connectFirebase}
               onDisconnectFirebase={store.disconnectFirebase}
               onResetDemo={store.resetToDemo}
+              onExportBackup={store.exportBackup}
+              onImportBackup={store.importBackup}
               googleConnected={store.googleCalendarConnected}
               googleSyncing={store.googleCalendarSyncing}
               googleError={store.googleCalendarError}

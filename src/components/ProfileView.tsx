@@ -16,15 +16,26 @@ function getInitials(name: string): string {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
+interface ProfileDraft {
+  userName?: string;
+  profileRole?: string;
+  profileInstitution?: string;
+  profileCourse?: string;
+  profileFocus?: string;
+  profileBio?: string;
+}
+
 export const ProfileView: React.FC<ProfileViewProps> = ({ data, user, onUpdateSettings }) => {
   const { settings } = data;
-  const [userName, setUserName] = useState(settings.userName);
-  const [profileRole, setProfileRole] = useState(settings.profileRole ?? '');
-  const [profileInstitution, setProfileInstitution] = useState(settings.profileInstitution ?? '');
-  const [profileCourse, setProfileCourse] = useState(settings.profileCourse ?? '');
-  const [profileFocus, setProfileFocus] = useState(settings.profileFocus ?? '');
-  const [profileBio, setProfileBio] = useState(settings.profileBio ?? '');
+  const [draft, setDraft] = useState<ProfileDraft>({});
   const [savedToast, setSavedToast] = useState(false);
+
+  const userName = draft.userName ?? settings.userName;
+  const profileRole = draft.profileRole ?? settings.profileRole ?? '';
+  const profileInstitution = draft.profileInstitution ?? settings.profileInstitution ?? '';
+  const profileCourse = draft.profileCourse ?? settings.profileCourse ?? '';
+  const profileFocus = draft.profileFocus ?? settings.profileFocus ?? '';
+  const profileBio = draft.profileBio ?? settings.profileBio ?? '';
 
   const completedTasks = data.tasks.filter((t) => t.completed).length;
   const fichadas = data.readings.filter((r) => r.status === 'Fichado').length;
@@ -40,6 +51,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ data, user, onUpdateSe
       profileFocus: profileFocus.trim(),
       profileBio: profileBio.trim(),
     });
+    setDraft({});
     setSavedToast(true);
     window.setTimeout(() => setSavedToast(false), 2500);
   };
@@ -206,7 +218,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ data, user, onUpdateSe
                 className="input"
                 placeholder="Ex: Raquel Silva"
                 value={userName}
-                onChange={(e) => setUserName(e.target.value)}
+                onChange={(e) => setDraft((prev) => ({ ...prev, userName: e.target.value }))}
                 required
               />
             </div>
@@ -218,7 +230,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ data, user, onUpdateSe
                 className="input"
                 placeholder="Ex: Psicologia · 7º Semestre"
                 value={profileRole}
-                onChange={(e) => setProfileRole(e.target.value)}
+                onChange={(e) => setDraft((prev) => ({ ...prev, profileRole: e.target.value }))}
               />
             </div>
           </div>
@@ -232,7 +244,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ data, user, onUpdateSe
                 className="input"
                 placeholder="Ex: Clínica Escola / Universidade"
                 value={profileInstitution}
-                onChange={(e) => setProfileInstitution(e.target.value)}
+                onChange={(e) =>
+                  setDraft((prev) => ({ ...prev, profileInstitution: e.target.value }))
+                }
               />
             </div>
             <div>
@@ -243,7 +257,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ data, user, onUpdateSe
                 className="input"
                 placeholder="Ex: TCC, Psicanálise, Neuropsicologia..."
                 value={profileCourse}
-                onChange={(e) => setProfileCourse(e.target.value)}
+                onChange={(e) => setDraft((prev) => ({ ...prev, profileCourse: e.target.value }))}
               />
             </div>
           </div>
@@ -256,7 +270,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ data, user, onUpdateSe
               className="input"
               placeholder="Ex: Concluir as horas de estágio e manter rotina leve"
               value={profileFocus}
-              onChange={(e) => setProfileFocus(e.target.value)}
+              onChange={(e) => setDraft((prev) => ({ ...prev, profileFocus: e.target.value }))}
             />
           </div>
 
@@ -269,7 +283,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ data, user, onUpdateSe
               rows={3}
               placeholder="Escreva um pouco sobre você, seus objetivos ou rotina..."
               value={profileBio}
-              onChange={(e) => setProfileBio(e.target.value)}
+              onChange={(e) => setDraft((prev) => ({ ...prev, profileBio: e.target.value }))}
             />
           </div>
 
