@@ -14,6 +14,7 @@ public class MainActivity extends BridgeActivity implements ModifiedMainActivity
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(WidgetBridgePlugin.class);
+        registerPlugin(AppUpdaterPlugin.class);
         super.onCreate(savedInstanceState);
         handleWidgetIntent(getIntent());
     }

@@ -1,7 +1,7 @@
 {
   "name": "atelier",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Atelier · Psicologia & Rotina",
   "main": "electron/main.cjs",
   "type": "module",
@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "electron:build": "npm.cmd run build && electron-builder --win nsis",
     "android:sync": "npm.cmd run build && npx.cmd cap sync android",
-    "android:build": "npm.cmd run android:sync && powershell -Command \"Set-Location android; .\\gradlew.bat assembleDebug; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; Copy-Item -Force app\\build\\outputs\\apk\\debug\\app-debug.apk ..\\release\\Atelier-1.0.0.apk\""
+    "android:build": "npm.cmd run android:sync && powershell -Command \"$v = (Get-Content package.json | ConvertFrom-Json).version; Set-Location android; .\\gradlew.bat assembleDebug; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; Copy-Item -Force app\\build\\outputs\\apk\\debug\\app-debug.apk ..\\release\\Atelier-$v.apk\""
   },
   "build": {
     "appId": "com.atelier.raquel",

@@ -13,8 +13,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Star,
+  Download,
 } from 'lucide-react';
 import type { AppSettings, FirebaseConfig, TabId, ThemeMode } from '../types';
+import {
+  formatBytesMB,
+  getAppPlatform,
+  getAppVersion,
+  type AppUpdateInfo,
+} from '../lib/appUpdater';
 import {
   loginWithEmail,
   registerWithEmail,
@@ -45,6 +52,12 @@ interface SettingsViewProps {
   onConnectGoogle: () => Promise<void>;
   onSyncGoogle: () => Promise<void>;
   onDisconnectGoogle: () => void;
+  updateInfo: AppUpdateInfo | null;
+  checkingUpdate: boolean;
+  updateError: string | null;
+  updateProgress: number | null;
+  onCheckUpdate: () => Promise<void>;
+  onInstallUpdate: () => Promise<void>;
 }
 
 function formatSyncTimestamp(iso?: string): string | null {
@@ -100,8 +113,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onConnectGoogle,
   onSyncGoogle,
   onDisconnectGoogle,
+  updateInfo,
+  checkingUpdate,
+  updateError,
+  updateProgress,
+  onCheckUpdate,
+  onInstallUpdate,
 }) => {
   const googleLastSyncLabel = formatSyncTimestamp(googleLastSyncAt);
+  const currentVersion = getAppVersion();
+  const appPlatform = getAppPlatform();
   const [apiKey, setApiKey] = useState(firebaseConfig?.apiKey ?? '');
   const [authDomain, setAuthDomain] = useState(firebaseConfig?.authDomain ?? '');
   const [projectId, setProjectId] = useState(firebaseConfig?.projectId ?? '');
@@ -658,6 +679,114 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               )}
             </div>
           )}
+        </section>
+
+        {/* Atualizações do aplicativo */}
+        <section className="card span-2">
+          <div className="card-header">
+            <h2 className="card-title">
+              <Download size={18} style={{ color: 'var(--accent)' }} />
+              Atualizações do aplicativo
+            </h2>
+            <span
+              className={`pill ${
+                updateInfo?.hasUpdate ? 'pill-accent' : 'pill-neutral'
+              }`}
+            >
+              {updateInfo?.hasUpdate
+                ? `Nova versão v${updateInfo.latestVersion}`
+                : `Versão v${currentVersion}`}
+            </span>
+          </div>
+
+          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+            {appPlatform === 'web'
+              ? `Você está usando o Atelier Web (v${currentVersion}), que atualiza automaticamente. Para instalar ou atualizar no Android/Windows, acesse a página de download.`
+              : updateInfo?.hasUpdate
+              ? `Versão instalada: v${currentVersion} · Nova versão disponível: v${updateInfo.latestVersion}${
+                  appPlatform === 'android' && formatBytesMB(updateInfo.apkSize)
+                    ? ` (${formatBytesMB(updateInfo.apkSize)})`
+                    : appPlatform === 'windows' && formatBytesMB(updateInfo.exeSize)
+                    ? ` (${formatBytesMB(updateInfo.exeSize)})`
+                    : ''
+                }.`
+              : updateInfo
+              ? `Seu aplicativo já está atualizado na versão v${currentVersion}!`
+              : `Versão instalada: v${currentVersion}. Verifique se existe uma versão mais recente para baixar.`}
+          </p>
+
+          {updateInfo?.hasUpdate && updateInfo.notes && (
+            <div
+              style={{
+                background: 'var(--bg-card-soft)',
+                borderRadius: '12px',
+                padding: '10px 12px',
+                fontSize: '0.8rem',
+                color: 'var(--text-secondary)',
+                whiteSpace: 'pre-line',
+                marginBottom: '12px',
+              }}
+            >
+              {updateInfo.notes}
+            </div>
+          )}
+
+          {updateError && (
+            <div
+              style={{
+                marginBottom: '12px',
+                padding: '10px 12px',
+                borderRadius: '10px',
+                background: 'var(--danger-soft)',
+                color: 'var(--danger)',
+                fontSize: '0.82rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <AlertCircle size={15} style={{ flexShrink: 0 }} />
+              <span>{updateError}</span>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {updateInfo?.hasUpdate && appPlatform !== 'web' && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => void onInstallUpdate()}
+                disabled={updateProgress !== null}
+              >
+                <Download size={15} />
+                {updateProgress !== null
+                  ? updateProgress > 0
+                    ? `Baixando atualização (${updateProgress}%)...`
+                    : 'Baixando atualização...'
+                  : `Atualizar para v${updateInfo.latestVersion}`}
+              </button>
+            )}
+
+            <button
+              type="button"
+              className={updateInfo?.hasUpdate && appPlatform !== 'web' ? 'btn btn-ghost' : 'btn btn-primary'}
+              onClick={() => void onCheckUpdate()}
+              disabled={checkingUpdate || updateProgress !== null}
+            >
+              <RefreshCw size={15} className={checkingUpdate ? 'spin' : undefined} />
+              {checkingUpdate ? 'Verificando...' : 'Verificar atualizações'}
+            </button>
+
+            <a
+              className="btn btn-ghost"
+              href="https://atelier-649da.web.app/baixar"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ textDecoration: 'none' }}
+            >
+              Abrir página /baixar
+            </a>
+          </div>
         </section>
 
         {/* Limpar dados */}

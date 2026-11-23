@@ -81,9 +81,14 @@ async function createWindow() {
     },
   });
 
-  // Allow Firebase Google Auth popups, open Google Calendar links in default browser
+  // Allow Firebase Google Auth popups, open external Calendar / update links in default browser
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url && url.startsWith('https://calendar.google.com/')) {
+    if (
+      url &&
+      (url.startsWith('https://calendar.google.com/') ||
+        url.startsWith('https://github.com/ThiagoSilvaPereira01/Atelier/') ||
+        url.startsWith('https://atelier-649da.web.app/baixar'))
+    ) {
       shell.openExternal(url);
       return { action: 'deny' };
     }

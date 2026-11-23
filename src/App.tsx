@@ -13,11 +13,18 @@ import {
   LogOut,
   Menu,
   X,
+  Download,
 } from 'lucide-react';
 import type { TabId, ThemeMode } from './types';
 import { useAppData } from './hooks/useAppData';
 import { logoutFirebase } from './lib/firebase';
 import { consumeInitialWidgetTab, subscribeWidgetTabOpen } from './lib/androidWidgets';
+import {
+  checkForAppUpdate,
+  getAppPlatform,
+  installAppUpdate,
+  type AppUpdateInfo,
+} from './lib/appUpdater';
 import { LoginView } from './components/LoginView';
 import { DashboardView } from './components/DashboardView';
 import { AgendaView } from './components/AgendaView';
@@ -42,8 +49,61 @@ const DEFAULT_MOBILE_FAVORITES: TabId[] = ['inicio', 'agenda', 'estudos', 'taref
 export function App() {
   const [activeTab, setActiveTab] = useState<TabId>('inicio');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateProgress, setUpdateProgress] = useState<number | null>(null);
+  const [updateBannerDismissed, setUpdateBannerDismissed] = useState(false);
   const store = useAppData();
   const { data } = store;
+  const appPlatform = getAppPlatform();
+
+  // Check for newer GitHub Releases automatically on installed apps (Android / Windows)
+  useEffect(() => {
+    if (appPlatform === 'web') return;
+    let cancelled = false;
+    checkForAppUpdate()
+      .then((info) => {
+        if (!cancelled) {
+          setUpdateInfo(info);
+        }
+      })
+      .catch(() => {
+        // Silent fail on background startup check
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [appPlatform]);
+
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    setUpdateError(null);
+    try {
+      const info = await checkForAppUpdate();
+      setUpdateInfo(info);
+      if (info.hasUpdate) {
+        setUpdateBannerDismissed(false);
+      }
+    } catch (err) {
+      setUpdateError(err instanceof Error ? err.message : 'Erro ao verificar atualizações.');
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
+
+  const handleInstallUpdate = async () => {
+    if (!updateInfo) return;
+    setUpdateError(null);
+    setUpdateProgress(0);
+    try {
+      await installAppUpdate(updateInfo, (pct) => setUpdateProgress(pct));
+    } catch (err) {
+      setUpdateError(err instanceof Error ? err.message : 'Não foi possível baixar a atualização.');
+    } finally {
+      setUpdateProgress(null);
+    }
+  };
 
   // Scroll to top when switching tabs (especially noticeable on mobile)
   useEffect(() => {
@@ -311,6 +371,59 @@ export function App() {
         )}
 
         <main className="main-content">
+          {appPlatform !== 'web' && updateInfo?.hasUpdate && !updateBannerDismissed && (
+            <div
+              className="card"
+              style={{
+                marginBottom: '16px',
+                padding: '12px 14px',
+                borderColor: 'var(--accent)',
+                background: 'var(--accent-soft)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 200px' }}>
+                <Download size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                    Nova versão v{updateInfo.latestVersion} disponível!
+                  </div>
+                  <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+                    Você está na v{updateInfo.currentVersion}. Toque em atualizar para instalar a versão mais recente.
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ padding: '7px 14px', fontSize: '0.82rem' }}
+                  onClick={() => void handleInstallUpdate()}
+                  disabled={updateProgress !== null}
+                >
+                  <Download size={14} />
+                  {updateProgress !== null
+                    ? updateProgress > 0
+                      ? `Baixando ${updateProgress}%...`
+                      : 'Baixando...'
+                    : 'Atualizar'}
+                </button>
+                <button
+                  type="button"
+                  className="btn-icon"
+                  onClick={() => setUpdateBannerDismissed(true)}
+                  aria-label="Dispensar aviso de atualização"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'inicio' && (
             <DashboardView
               data={data}
@@ -422,6 +535,12 @@ export function App() {
               onConnectGoogle={store.connectAndSyncGoogleCalendar}
               onSyncGoogle={store.syncGoogleCalendarNow}
               onDisconnectGoogle={store.disconnectGoogleCalendar}
+              updateInfo={updateInfo}
+              checkingUpdate={checkingUpdate}
+              updateError={updateError}
+              updateProgress={updateProgress}
+              onCheckUpdate={handleCheckUpdate}
+              onInstallUpdate={handleInstallUpdate}
             />
           )}
         </main>

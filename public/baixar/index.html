@@ -222,6 +222,27 @@
         padding: 10px 18px;
       }
 
+      .release-notes-card {
+        margin-top: 18px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 18px 22px;
+      }
+
+      .release-notes-title {
+        font-weight: 700;
+        font-size: 0.94rem;
+        margin-bottom: 8px;
+        color: var(--text);
+      }
+
+      .release-notes-body {
+        font-size: 0.84rem;
+        color: var(--text-sec);
+        white-space: pre-line;
+      }
+
       .notice {
         margin-top: 14px;
         text-align: center;
@@ -252,7 +273,7 @@
         <p class="subtitle">
           Escolha seu aparelho abaixo para baixar o instalador direto e manter tudo sincronizado na nuvem.
         </p>
-        <div id="release-status" class="version-badge">Versão 1.0.0 · Download direto</div>
+        <div id="release-status" class="version-badge">Versão 1.1.0 · Download direto</div>
       </header>
 
       <section class="grid">
@@ -281,7 +302,7 @@
           <a
             id="btn-win"
             class="btn btn-primary"
-            href="https://github.com/ThiagoSilvaPereira01/Atelier/releases/latest/download/Atelier.Setup.1.0.0.exe"
+            href="https://github.com/ThiagoSilvaPereira01/Atelier/releases/latest/download/Atelier.Setup.1.1.0.exe"
           >
             Baixar para Windows (.exe)
           </a>
@@ -297,7 +318,7 @@
               <span id="badge-and" class="badge-rec" style="display: none">Seu aparelho</span>
             </div>
             <p class="meta" id="meta-and" style="margin-top: 8px">
-              Aplicativo direto para celular Android (<code>.apk</code>).
+              Aplicativo direto para celular Android (<code>.apk</code>) com widgets na tela inicial.
             </p>
           </div>
 
@@ -305,18 +326,23 @@
             <ol>
               <li>Toque em <strong>Baixar para Android</strong> abaixo.</li>
               <li>Abra o arquivo <code>.apk</code> quando terminar o download.</li>
-              <li>Permita <em>Instalar apps desconhecidos</em> e entre com Google ou e-mail e senha.</li>
+              <li>Permita <em>Instalar apps desconhecidos</em> — se já tiver instalado antes, ele só atualiza mantendo seus dados.</li>
             </ol>
           </div>
 
           <a
             id="btn-and"
             class="btn btn-primary"
-            href="https://github.com/ThiagoSilvaPereira01/Atelier/releases/latest/download/Atelier-1.0.0.apk"
+            href="https://github.com/ThiagoSilvaPereira01/Atelier/releases/latest/download/Atelier-1.1.0.apk"
           >
             Baixar para Android (.apk)
           </a>
         </article>
+      </section>
+
+      <section id="release-notes-card" class="release-notes-card" style="display: none">
+        <div class="release-notes-title" id="release-notes-title">✨ Novidades desta versão</div>
+        <div class="release-notes-body" id="release-notes-body"></div>
       </section>
 
       <section class="web-card">
@@ -364,8 +390,28 @@
             const apk = release.assets.find((a) => a.name.toLowerCase().endsWith('.apk'));
 
             if (release.tag_name) {
+              var dateSuffix = '';
+              if (release.published_at) {
+                var dt = new Date(release.published_at);
+                if (!Number.isNaN(dt.getTime())) {
+                  dateSuffix =
+                    ' · Atualizado em ' +
+                    new Intl.DateTimeFormat('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                    }).format(dt);
+                }
+              }
               document.getElementById('release-status').textContent =
-                'Versão ' + release.tag_name + ' · Download direto';
+                'Versão ' + release.tag_name + dateSuffix;
+            }
+
+            if (release.body && release.body.trim()) {
+              document.getElementById('release-notes-title').textContent =
+                '✨ Novidades da versão ' + (release.tag_name || '');
+              document.getElementById('release-notes-body').textContent = release.body.trim();
+              document.getElementById('release-notes-card').style.display = 'block';
             }
 
             if (exe) {

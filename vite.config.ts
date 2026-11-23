@@ -30,15 +30,27 @@ function readWebClientIdFromGoogleServices(): string {
   return ''
 }
 
+function readAppVersion(): string {
+  try {
+    const pkgPath = path.resolve(import.meta.dirname, 'package.json')
+    const parsed = JSON.parse(fs.readFileSync(pkgPath, 'utf-8')) as { version?: string }
+    return parsed.version || '1.0.0'
+  } catch {
+    return '1.0.0'
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const googleWebClientId = env.VITE_GOOGLE_WEB_CLIENT_ID || readWebClientIdFromGoogleServices()
+  const appVersion = readAppVersion()
 
   return {
     plugins: [react()],
     define: {
       __GOOGLE_WEB_CLIENT_ID__: JSON.stringify(googleWebClientId),
+      __APP_VERSION__: JSON.stringify(appVersion),
     },
   }
 })
