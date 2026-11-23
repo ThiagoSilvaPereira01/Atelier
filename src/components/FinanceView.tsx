@@ -436,8 +436,8 @@ export const FinanceView: React.FC<FinanceViewProps> = ({
             <Wallet size={18} style={{ color: 'var(--accent)' }} />
             Lançamentos ({filteredTx.length})
           </h2>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ position: 'relative', minWidth: '190px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', flex: '1 1 200px', justifyContent: 'flex-end' }}>
+            <div style={{ position: 'relative', flex: '1 1 180px', maxWidth: '280px', width: '100%' }}>
               <Search
                 size={15}
                 style={{

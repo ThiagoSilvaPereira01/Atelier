@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Home,
   Calendar,
@@ -43,6 +43,35 @@ export function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const store = useAppData();
   const { data } = store;
+
+  // Scroll to top when switching tabs (especially noticeable on mobile)
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  }, [activeTab]);
+
+  // Keep mobile browser status/address bar color synced with active theme
+  useEffect(() => {
+    const themeColor =
+      data.settings.theme === 'dark'
+        ? '#181a1f'
+        : data.settings.theme === 'light'
+        ? '#ffffff'
+        : '#8f4f46';
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      meta.setAttribute('content', themeColor);
+    }
+  }, [data.settings.theme]);
+
+  // Prevent background page scroll while mobile drawer is open
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [mobileMenuOpen]);
 
   if (store.authLoading) {
     return (
@@ -162,14 +191,14 @@ export function App() {
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <header className="mobile-topbar">
           <div>
-            <span className="brand-script" style={{ fontSize: '1.6rem' }}>
+            <span className="brand-script" style={{ fontSize: '1.65rem' }}>
               {data.settings.brandName}
             </span>
           </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             <button
-              className="theme-pill-btn active"
-              style={{ padding: '6px 8px' }}
+              type="button"
+              className="mobile-topbar-btn"
               onClick={() => {
                 setActiveTab('perfil');
                 setMobileMenuOpen(false);
@@ -180,23 +209,33 @@ export function App() {
               <UserIcon size={16} />
             </button>
             <button
-              className="theme-pill-btn active"
-              style={{ padding: '6px 10px' }}
+              type="button"
+              className="mobile-topbar-btn mobile-topbar-pill"
               onClick={() => {
                 const order: ThemeMode[] = ['pastel', 'light', 'dark'];
                 const next = order[(order.indexOf(data.settings.theme) + 1) % order.length];
                 setTheme(next);
               }}
+              aria-label="Alternar tema"
             >
-              {data.settings.theme === 'pastel'
-                ? 'Pastel'
-                : data.settings.theme === 'light'
-                ? 'Claro'
-                : 'Escuro'}
+              {data.settings.theme === 'pastel' ? (
+                <Sparkles size={13} />
+              ) : data.settings.theme === 'light' ? (
+                <Sun size={13} />
+              ) : (
+                <Moon size={13} />
+              )}
+              <span>
+                {data.settings.theme === 'pastel'
+                  ? 'Pastel'
+                  : data.settings.theme === 'light'
+                  ? 'Claro'
+                  : 'Escuro'}
+              </span>
             </button>
             <button
-              className="theme-pill-btn active"
-              style={{ padding: '6px 8px' }}
+              type="button"
+              className="mobile-topbar-btn"
               onClick={() => setMobileMenuOpen((v) => !v)}
               aria-label="Abrir menu"
             >
@@ -208,9 +247,15 @@ export function App() {
         {mobileMenuOpen && (
           <div className="mobile-drawer-overlay" onClick={() => setMobileMenuOpen(false)}>
             <div className="mobile-drawer" onClick={(e) => e.stopPropagation()}>
+              <div className="mobile-drawer-handle" aria-hidden="true" />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Todas as abas</span>
-                <button className="btn-icon" onClick={() => setMobileMenuOpen(false)}>
+                <span style={{ fontWeight: 700, fontSize: '0.96rem' }}>Todas as abas</span>
+                <button
+                  type="button"
+                  className="btn-icon"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Fechar menu"
+                >
                   <X size={18} />
                 </button>
               </div>
@@ -368,25 +413,29 @@ export function App() {
       </div>
 
       {/* Mobile Bottom Nav */}
-      <nav className="mobile-bottom-nav">
+      <nav className="mobile-bottom-nav" aria-label="Navegação principal">
         {mobileNavItems.map((item) => (
           <button
             key={item.id}
+            type="button"
             className={`mobile-nav-btn ${activeTab === item.id ? 'active' : ''}`}
             onClick={() => {
               setActiveTab(item.id);
               setMobileMenuOpen(false);
             }}
           >
-            {item.icon}
+            <span className="mobile-nav-icon">{item.icon}</span>
             <span>{item.shortLabel}</span>
           </button>
         ))}
         <button
+          type="button"
           className={`mobile-nav-btn ${!activeInBottomBar || mobileMenuOpen ? 'active' : ''}`}
           onClick={() => setMobileMenuOpen((v) => !v)}
         >
-          <Menu size={18} />
+          <span className="mobile-nav-icon">
+            <Menu size={18} />
+          </span>
           <span>Mais</span>
         </button>
       </nav>

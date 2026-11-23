@@ -582,6 +582,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
 
             const visibleItems = combinedItems.slice(0, 3);
             const extraCount = combinedItems.length - visibleItems.length;
+            const mobileDots = combinedItems.slice(0, 4);
 
             return (
               <button
@@ -593,6 +594,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                   !cell.inMonth ? 'outside' : '',
                   isToday ? 'today' : '',
                   isSelected ? 'selected' : '',
+                  combinedItems.length > 0 ? 'has-items' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
@@ -617,6 +619,19 @@ export const AgendaView: React.FC<AgendaViewProps> = ({
                     {extraCount > 0 && (
                       <span className="calendar-more">+{extraCount} mais</span>
                     )}
+                  </div>
+                )}
+
+                {mobileDots.length > 0 && (
+                  <div className="calendar-mobile-dots" aria-hidden="true">
+                    {mobileDots.map((item) => (
+                      <span
+                        key={`${item.kind}-${item.id}`}
+                        className={`calendar-dot ${item.kind}${
+                          item.kind === 'task' && item.completed ? ' done' : ''
+                        }`}
+                      />
+                    ))}
                   </div>
                 )}
               </button>
