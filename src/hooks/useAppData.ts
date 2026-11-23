@@ -37,6 +37,7 @@ import {
   translateGoogleCalendarError,
   updateGoogleEvent,
 } from '../lib/googleCalendar';
+import { syncAndroidWidgets } from '../lib/androidWidgets';
 
 const LOCAL_DATA_KEY = 'raquel_psi_app_data_v1';
 const GOOGLE_AUTO_SYNC_INTERVAL_MS = 2 * 60_000;
@@ -117,13 +118,14 @@ export function useAppData() {
     StatusBar.setBackgroundColor({ color: bgColor }).catch(() => {});
   }, [data.settings.theme]);
 
-  // Save to localStorage whenever data changes
+  // Save to localStorage and sync Android home-screen widgets whenever data changes
   useEffect(() => {
     try {
       localStorage.setItem(LOCAL_DATA_KEY, JSON.stringify(data));
     } catch {
       // Ignore storage quota errors
     }
+    syncAndroidWidgets(data);
   }, [data]);
 
   // Initialize Firebase when config is present

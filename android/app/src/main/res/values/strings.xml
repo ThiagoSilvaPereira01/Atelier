@@ -4,4 +4,8 @@
     <string name="title_activity_main">Atelier</string>
     <string name="package_name">com.atelier.raquel</string>
     <string name="custom_url_scheme">com.atelier.raquel</string>
+    <string name="widget_agenda_label">Agenda de hoje</string>
+    <string name="widget_agenda_description">Mostra os compromissos de hoje do Atelier direto na tela inicial.</string>
+    <string name="widget_tasks_label">Tarefas pendentes</string>
+    <string name="widget_tasks_description">Mostra suas tarefas e lembretes pendentes do Atelier na tela inicial.</string>
 </resources>

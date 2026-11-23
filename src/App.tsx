@@ -17,6 +17,7 @@ import {
 import type { TabId, ThemeMode } from './types';
 import { useAppData } from './hooks/useAppData';
 import { logoutFirebase } from './lib/firebase';
+import { consumeInitialWidgetTab, subscribeWidgetTabOpen } from './lib/androidWidgets';
 import { LoginView } from './components/LoginView';
 import { DashboardView } from './components/DashboardView';
 import { AgendaView } from './components/AgendaView';
@@ -48,6 +49,20 @@ export function App() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
   }, [activeTab]);
+
+  // Open the right tab when launched or resumed from an Android home-screen widget
+  useEffect(() => {
+    void consumeInitialWidgetTab().then((tab) => {
+      if (tab) {
+        setActiveTab(tab);
+        setMobileMenuOpen(false);
+      }
+    });
+    return subscribeWidgetTabOpen((tab) => {
+      setActiveTab(tab);
+      setMobileMenuOpen(false);
+    });
+  }, []);
 
   // Keep mobile browser status/address bar color synced with active theme
   useEffect(() => {

@@ -33,6 +33,32 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- Widget: Agenda de hoje -->
+        <receiver
+            android:name=".AgendaWidgetProvider"
+            android:label="@string/widget_agenda_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_agenda_info" />
+        </receiver>
+
+        <!-- Widget: Tarefas pendentes -->
+        <receiver
+            android:name=".TasksWidgetProvider"
+            android:label="@string/widget_tasks_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_tasks_info" />
+        </receiver>
     </application>
 
     <!-- Permissions -->
